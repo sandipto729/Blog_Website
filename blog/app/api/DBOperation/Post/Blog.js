@@ -110,6 +110,17 @@ export async function fetchBlogsByTag(tag) {
     }
 }
 
+export async function fetchUserById(userId) {
+    try {
+        await connectDB()
+        const user = await UserModel.findById(userId).select('name email profilePicture')
+        return user
+    } catch (error) {
+        console.error('Error fetching user by ID:', error)
+        throw new Error('Failed to fetch user by ID')
+    }
+}
+
 
 // Default export with all functions
 const DBOperation = {
@@ -119,6 +130,7 @@ const DBOperation = {
     fetchBlogsByAuthor,
     fetchBlogsByCategory,
     fetchBlogsByTag,
+    fetchUserById,
 }
 
 export default DBOperation

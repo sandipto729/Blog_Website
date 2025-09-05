@@ -3,6 +3,13 @@ import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import DBOperation from "../DBOperation/Post/Blog.js";
 
 const typeDefs = `#graphql
+    # User Schema
+    type User {
+        id: ID!
+        name: String!
+        email: String!
+        profilePicture: String
+    }
     # Post Schema
     type Post {
         id: ID!
@@ -11,7 +18,7 @@ const typeDefs = `#graphql
         excerpt: String
         tags: [String]
         category: String
-        author: ID!
+        author: User
         slug: String!
         published: Boolean
         featured: Boolean
@@ -56,6 +63,20 @@ const typeDefs = `#graphql
 `;
 
 const resolvers = {
+    Post:{
+        author: async (post) => {
+            try {
+                const author = await DBOperation.fetchUserById(post.author);
+                return {
+                    ...author.toObject(),
+                    id: author._id.toString()
+                };
+            } catch (error) {
+                console.error('Error fetching author:', error);
+                throw new Error('Failed to fetch author');
+            }
+        }
+    },
     Query: {
         posts: async () => {
             try {
