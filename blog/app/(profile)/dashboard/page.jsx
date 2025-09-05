@@ -75,7 +75,12 @@ const Dashboard = () => {
               <div className={styles.cardIcon}>📝</div>
               <h3>Create Post</h3>
               <p>Write and publish your blog posts</p>
-              <button className={styles.cardButton}>Get Started</button>
+              <button 
+                className={styles.cardButton}
+                onClick={() => router.push('/create-post')}
+              >
+                Get Started
+              </button>
             </div>
 
             <div className={styles.card}>
