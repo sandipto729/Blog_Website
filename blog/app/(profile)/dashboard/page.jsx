@@ -28,45 +28,13 @@ const Dashboard = () => {
     return null
   }
 
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/login' })
-  }
-
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <h1>Dashboard</h1>
-          <div className={styles.userInfo}>
-            <div className={styles.userDetails}>
-              <span className={styles.welcome}>Welcome back,</span>
-              <span className={styles.userName}>{session.user?.name}</span>
-              <span className={styles.userEmail}>{session.user?.email}</span>
-            </div>
-            {(session.user?.profilePicture || session.user?.image) && (
-              <img 
-                src={session.user?.profilePicture || session.user?.image} 
-                alt="Profile" 
-                className={styles.avatar}
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                }}
-              />
-            )}
-            <button 
-              onClick={handleSignOut}
-              className={styles.signOutButton}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main className={styles.main}>
         <div className={styles.content}>
           <div className={styles.welcomeCard}>
-            <h2>Welcome to your Blog Dashboard</h2>
+            <h1>Dashboard</h1>
+            <h2>Welcome back, {session.user?.name}!</h2>
             <p>You have successfully logged in. This is where you can manage your blog posts, view analytics, and customize your profile.</p>
           </div>
 

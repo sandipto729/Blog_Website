@@ -1,8 +1,8 @@
 import { gql } from '@apollo/client';
 
 const Fetch_POSTS = gql`
-    query GetPosts {
-        posts {
+    query postsByCategory($category: String!) {
+        postsByCategory(category: $category) {
             id
             title
             category

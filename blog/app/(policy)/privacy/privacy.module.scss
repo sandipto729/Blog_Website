@@ -1,0 +1,378 @@
+// Shared styles for legal pages (Privacy, Terms, Cookies)
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%);
+  position: relative;
+  overflow-x: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+    z-index: 0;
+  }
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+/* Header Section */
+.header {
+  margin-bottom: 3rem;
+  padding-top: 2rem;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 2rem;
+  }
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  color: #78c5ff;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #ff77c6;
+    transform: translateX(-5px);
+  }
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0 0 1rem 0;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #f8fafc 0%, #78c5ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  
+  @media (max-width: 768px) {
+    font-size: 2.5rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 2rem;
+  }
+}
+
+.lastUpdated {
+  color: #94a3b8;
+  font-size: 1rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Content Sections */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  
+  @media (max-width: 768px) {
+    gap: 2rem;
+  }
+}
+
+.section {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(120, 197, 255, 0.1);
+  border-radius: 16px;
+  padding: 2.5rem;
+  transition: all 0.3s ease;
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+  }
+  
+  &:hover {
+    border-color: rgba(120, 197, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(120, 197, 255, 0.2);
+  
+  @media (max-width: 768px) {
+    font-size: 1.3rem;
+  }
+}
+
+.sectionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.subTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 1.5rem 0 0.75rem 0;
+  
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.paragraph {
+  color: #cbd5e1;
+  line-height: 1.7;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Lists */
+.list {
+  color: #cbd5e1;
+  line-height: 1.7;
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+  
+  li {
+    margin-bottom: 0.5rem;
+    position: relative;
+    
+    &::marker {
+      color: #78c5ff;
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Links */
+.inlineLink {
+  color: #78c5ff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(120, 197, 255, 0.3);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #ff77c6;
+    border-bottom-color: rgba(255, 119, 198, 0.5);
+  }
+}
+
+.externalLink {
+  color: #78c5ff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(120, 197, 255, 0.3);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #ff77c6;
+    border-bottom-color: rgba(255, 119, 198, 0.5);
+  }
+  
+  &::after {
+    content: ' ↗';
+    font-size: 0.8em;
+    opacity: 0.7;
+  }
+}
+
+/* Contact Info */
+.contactInfo {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(120, 197, 255, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  
+  p {
+    margin: 0 0 0.5rem 0;
+    color: #e2e8f0;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    strong {
+      color: #78c5ff;
+    }
+  }
+}
+
+/* Browser Grid for Cookie Policy */
+.browserGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.browserCard {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(120, 197, 255, 0.15);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: rgba(120, 197, 255, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+  }
+  
+  strong {
+    color: #78c5ff;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  p {
+    color: #cbd5e1;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+}
+
+/* Background Elements */
+.backgroundElements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bgOrb {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(120, 197, 255, 0.1) 0%, transparent 70%);
+  filter: blur(40px);
+  animation: pulse 8s ease-in-out infinite;
+  
+  &:nth-child(2) {
+    animation-delay: -3s;
+    background: radial-gradient(circle, rgba(255, 119, 198, 0.08) 0%, transparent 70%);
+  }
+  
+  &:nth-child(3) {
+    animation-delay: -6s;
+    background: radial-gradient(circle, rgba(120, 119, 198, 0.06) 0%, transparent 70%);
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bgOrb {
+    animation: none;
+  }
+  
+  .section {
+    transition: none;
+  }
+  
+  .backLink {
+    transition: none;
+  }
+}
+
+/* Focus styles */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #78c5ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Print styles */
+@media print {
+  .container {
+    background: white;
+    color: black;
+    
+    &::before {
+      display: none;
+    }
+  }
+  
+  .backgroundElements {
+    display: none;
+  }
+  
+  .section {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+  
+  .title,
+  .sectionTitle {
+    color: black;
+    background: none;
+    -webkit-text-fill-color: initial;
+  }
+  
+  .paragraph,
+  .list,
+  .contactInfo p {
+    color: black;
+  }
+  
+  .backLink {
+    display: none;
+  }
+}

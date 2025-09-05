@@ -1,15 +1,16 @@
-
 "use client";
-
 import React from 'react';
 import { useQuery } from '@apollo/client/react';
 import Fetch_POSTS from './Query';
 import { useRouter } from 'next/navigation';
 import styles from './blog.module.scss';
 
-const BlogList = () => {
+const BlogList = ({searchParams}) => {
+	const category = searchParams?.category || 'all'; 
 	const router = useRouter();
-	const { loading, error, data } = useQuery(Fetch_POSTS);
+	const { loading, error, data } = useQuery(Fetch_POSTS, {
+		variables: { category: category }
+	});
 
 	if (loading) {
 		return (
@@ -32,7 +33,7 @@ const BlogList = () => {
 		);
 	}
 
-	if (!data?.posts || data.posts.length === 0) {
+	if (!data?.postsByCategory || data.postsByCategory.length === 0) {
 		return (
 			<div className={styles.emptyState}>
 				<div className={styles.emptyIcon}>📝</div>
@@ -44,9 +45,12 @@ const BlogList = () => {
 		);
 	}
 
+	// Use the data from postsByCategory query
+	const posts = data.postsByCategory;
+
 	return (
 		<div className={styles.blogGrid}>
-			{data.posts.map(post => (
+			{posts.map(post => (
 				<div
 					key={post.id}
 					className={styles.blogCard}
@@ -129,7 +133,7 @@ const BlogList = () => {
 	);
 };
 
-export default function Page() {
+export default function Page({searchParams}) {
 	return (
 		<div className={styles.container}>
 			<div className={styles.header}>
@@ -138,7 +142,7 @@ export default function Page() {
 					Discover insights, tutorials, and stories from our community
 				</p>
 			</div>
-			<BlogList />
+			<BlogList searchParams={searchParams} />
 		</div>
 	);
 }

@@ -92,6 +92,11 @@ export async function fetchBlogsByAuthor(authorId) {
 export async function fetchBlogsByCategory(category) {
     try {
         await connectDB()
+        if(category === 'all') {
+            const blogs = await BlogModel.find().sort({ createdAt: -1 })
+            return blogs
+        }
+        //  --- IGNORE ---
         const blogs = await BlogModel.find({ category }).sort({ createdAt: -1 })
         return blogs
     } catch (error) {
