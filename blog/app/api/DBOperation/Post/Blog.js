@@ -121,25 +121,71 @@ export async function fetchBlogById(id) {
                 throw new Error('Blog not found')
             }
             const props = result.records[0].get('p').properties;
+            // Handle datetime conversion in the database layer
             if (props.createdAt && typeof props.createdAt === 'object') {
                 const dt = props.createdAt;
-                props.createdAt = `${dt.year.low}-${String(dt.month.low).padStart(2, '0')}-${String(dt.day.low).padStart(2, '0')}T${String(dt.hour.low).padStart(2, '0')}:${String(dt.minute.low).padStart(2, '0')}:${String(dt.second.low).padStart(2, '0')}.${dt.nanosecond.low}Z`;
+                const year = dt.year?.low || dt.year || 0;
+                const month = dt.month?.low || dt.month || 1;
+                const day = dt.day?.low || dt.day || 1;
+                const hour = dt.hour?.low || dt.hour || 0;
+                const minute = dt.minute?.low || dt.minute || 0;
+                const second = dt.second?.low || dt.second || 0;
+                const nanosecond = dt.nanosecond?.low || dt.nanosecond || 0;
+                
+                const milliseconds = Math.floor(nanosecond / 1000000);
+                const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
+                props.createdAt = date.toISOString();
             }
             return props;
         } finally {
-            neo4jSession.close()
+            await neo4jSession.close()
         }
     } catch (error) {
         console.error('Error fetching blog by ID:', error)
+        if (error.code === 'SessionExpired' || error.code === 'ServiceUnavailable') {
+            throw new Error('Database connection lost. Please try again.')
+        }
         throw new Error('Failed to fetch blog by ID')
     }
 }
 
 export async function fetchBlogsByAuthor(authorId) {
     try {
-        await connectDB()
-        const blogs = await BlogModel.find({ author: authorId }).sort({ createdAt: -1 })
-        return blogs
+        const neo4jSession = driver.session()
+        try {
+            const result = await neo4jSession.run(
+                `MATCH (u:User {id: $authorId})-[:AUTHORED]->(p:Post)
+                 MATCH (p)-[:IN_CATEGORY]->(c:Category)
+                 OPTIONAL MATCH (p)-[:TAGGED_WITH]->(t:Tag)
+                 WITH p, c, collect(t.name) AS tags
+                 SET p.category = c.name,
+                     p.tags = tags
+                 RETURN p
+                 ORDER BY p.createdAt DESC`,
+                { authorId }
+            )
+            return result.records.map(record => {
+                const props = record.get('p').properties;
+                // Handle datetime conversion in the database layer
+                if (props.createdAt && typeof props.createdAt === 'object') {
+                    const dt = props.createdAt;
+                    const year = dt.year?.low || dt.year || 0;
+                    const month = dt.month?.low || dt.month || 1;
+                    const day = dt.day?.low || dt.day || 1;
+                    const hour = dt.hour?.low || dt.hour || 0;
+                    const minute = dt.minute?.low || dt.minute || 0;
+                    const second = dt.second?.low || dt.second || 0;
+                    const nanosecond = dt.nanosecond?.low || dt.nanosecond || 0;
+                    
+                    const milliseconds = Math.floor(nanosecond / 1000000);
+                    const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
+                    props.createdAt = date.toISOString();
+                }
+                return props;
+            })
+        } finally {
+            await neo4jSession.close()
+        }
     } catch (error) {
         console.error('Error fetching blogs by author:', error)
         throw new Error('Failed to fetch blogs by author')
@@ -153,23 +199,42 @@ export async function fetchBlogsByCategory(category) {
             let result = await neo4jSession.run(
                 category === 'all' ?
                 `MATCH (p:Post)-[:IN_CATEGORY]->(c:Category)
+                 OPTIONAL MATCH (p)-[:TAGGED_WITH]->(t:Tag)
+                 WITH p, c, collect(t.name) AS tags
+                 SET p.category = c.name,
+                     p.tags = tags
                  RETURN p
                  ORDER BY p.createdAt DESC` :
                 `MATCH (p:Post)-[:IN_CATEGORY]->(c:Category {name: $category})
+                 OPTIONAL MATCH (p)-[:TAGGED_WITH]->(t:Tag)
+                 WITH p, c, collect(t.name) AS tags
+                 SET p.category = c.name,
+                     p.tags = tags
                  RETURN p
                  ORDER BY p.createdAt DESC`,
                 category === 'all' ? {} : { category }
             )
             return result.records.map(record => {
                 const props = record.get('p').properties;
+                // Handle datetime conversion in the database layer
                 if (props.createdAt && typeof props.createdAt === 'object') {
                     const dt = props.createdAt;
-                    props.createdAt = `${dt.year.low}-${String(dt.month.low).padStart(2, '0')}-${String(dt.day.low).padStart(2, '0')}T${String(dt.hour.low).padStart(2, '0')}:${String(dt.minute.low).padStart(2, '0')}:${String(dt.second.low).padStart(2, '0')}.${dt.nanosecond.low}Z`;
+                    const year = dt.year?.low || dt.year || 0;
+                    const month = dt.month?.low || dt.month || 1;
+                    const day = dt.day?.low || dt.day || 1;
+                    const hour = dt.hour?.low || dt.hour || 0;
+                    const minute = dt.minute?.low || dt.minute || 0;
+                    const second = dt.second?.low || dt.second || 0;
+                    const nanosecond = dt.nanosecond?.low || dt.nanosecond || 0;
+                    
+                    const milliseconds = Math.floor(nanosecond / 1000000);
+                    const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
+                    props.createdAt = date.toISOString();
                 }
                 return props;
             })
         } finally {
-            neo4jSession.close()
+            await neo4jSession.close()
         }
     } catch (error) {
         console.error('Error fetching blogs by category:', error)
@@ -216,6 +281,83 @@ export async function fetchUserById(blogID) {
 }
 
 
+export async function EditBlog(postId, title, content, tags, category) {
+    try{
+        // Generate excerpt from content (first 150 characters)
+        const excerpt = content.replace(/<[^>]*>/g, '').substring(0, 150) + '...'
+        
+        // Generate slug from title
+        const slug = title.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim()
+
+        const neo4jSession = driver.session()
+        try {
+            const result = await neo4jSession.run(
+                `MATCH (p:Post {id: $postId})
+                SET p.title = $title,
+                    p.content = $content,
+                    p.excerpt = $excerpt,
+                    p.slug = $slug,
+                    p.updatedAt = datetime()
+                WITH p
+                OPTIONAL MATCH (p)-[r:TAGGED_WITH]->(t:Tag)
+                DELETE r
+                WITH p
+                UNWIND $tags AS tagName
+                    MERGE (t:Tag {name: tagName})
+                    MERGE (p)-[:TAGGED_WITH]->(t)
+                WITH p
+                OPTIONAL MATCH (p)-[catRel:IN_CATEGORY]->(oldCat:Category)
+                DELETE catRel
+                WITH p
+                MERGE (c:Category {name: $category})
+                MERGE (p)-[:IN_CATEGORY]->(c)
+                RETURN p`,
+                {
+                    postId,
+                    title,
+                    content,
+                    excerpt,
+                    slug,
+                    tags: tags || [],
+                    category: category || 'general'
+                }
+            )
+            if (result.records.length === 0) {
+                throw new Error('Post not found or update failed')
+            }
+            return result.records[0].get('p').properties
+        } finally {
+            neo4jSession.close()
+        }
+    } catch (error) {
+        console.error('Error fetching user by ID:', error)
+        throw new Error('Failed to fetch user by ID')
+    }
+}
+
+export async function deleteBlog(postId) {
+    try {
+        const neo4jSession = driver.session()
+        try {
+            await neo4jSession.run(
+                `MATCH (p:Post {id: $postId})
+                 DETACH DELETE p`,
+                { postId }
+            )
+            return { success: true }
+        } finally {
+            neo4jSession.close()
+        }
+    } catch (error) {
+        console.error('Error deleting blog:', error)
+        throw new Error('Failed to delete blog')
+    }
+}
+
 // Default export with all functions
 const DBOperation = {
     savePost,
@@ -225,6 +367,8 @@ const DBOperation = {
     fetchBlogsByCategory,
     fetchBlogsByTag,
     fetchUserById,
+    EditBlog,
+    deleteBlog
 }
 
 export default DBOperation

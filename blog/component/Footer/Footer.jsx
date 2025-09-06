@@ -9,20 +9,20 @@ const Footer = () => {
 
     return (
         <footer className={styles.footer}>
-            <div className={styles.container}>
+            <div className={styles.container} suppressHydrationWarning={true}>
                 {/* Main Footer Content */}
-                <div className={styles.content}>
+                <div className={styles.content} suppressHydrationWarning={true}>
                     {/* Brand Section */}
-                    <div className={styles.brandSection}>
-                        <div className={styles.logo}>
-                            <div className={styles.logoIcon}>📝</div>
+                    <div className={styles.brandSection} suppressHydrationWarning={true}>
+                        <div className={styles.logo} suppressHydrationWarning={true}>
+                            <div className={styles.logoIcon} suppressHydrationWarning={true}>📝</div>
                             <span className={styles.logoText}>BlogSpace</span>
                         </div>
                         <p className={styles.description}>
                             A modern platform for sharing ideas, insights, and stories. 
                             Join our community of writers and readers.
                         </p>
-                        <div className={styles.socialLinks}>
+                        <div className={styles.socialLinks} suppressHydrationWarning={true}>
                             <a href="#" className={styles.socialLink} aria-label="Twitter">
                                 🐦
                             </a>
@@ -39,7 +39,7 @@ const Footer = () => {
                     </div>
 
                     {/* Quick Links */}
-                    <div className={styles.linksSection}>
+                    <div className={styles.linksSection} suppressHydrationWarning={true}>
                         <h3 className={styles.sectionTitle}>Quick Links</h3>
                         <ul className={styles.linksList}>
                             <li>
@@ -66,7 +66,7 @@ const Footer = () => {
                     </div>
 
                     {/* Categories */}
-                    <div className={styles.linksSection}>
+                    <div className={styles.linksSection} suppressHydrationWarning={true}>
                         <h3 className={styles.sectionTitle}>Categories</h3>
                         <ul className={styles.linksList}>
                             <li>
@@ -93,7 +93,7 @@ const Footer = () => {
                     </div>
 
                     {/* Support */}
-                    <div className={styles.linksSection}>
+                    <div className={styles.linksSection} suppressHydrationWarning={true}>
                         <h3 className={styles.sectionTitle}>Support</h3>
                         <ul className={styles.linksList}>
                             <li>
@@ -121,8 +121,8 @@ const Footer = () => {
                 </div>
 
                 {/* Newsletter Section */}
-                <div className={styles.newsletter}>
-                    <div className={styles.newsletterContent}>
+                <div className={styles.newsletter} suppressHydrationWarning={true}>
+                    <div className={styles.newsletterContent} suppressHydrationWarning={true}>
                         <h3 className={styles.newsletterTitle}>Stay Updated</h3>
                         <p className={styles.newsletterDescription}>
                             Get the latest posts and updates delivered to your inbox.
@@ -142,12 +142,12 @@ const Footer = () => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className={styles.bottomBar}>
-                    <div className={styles.bottomContent}>
+                <div className={styles.bottomBar} suppressHydrationWarning={true}>
+                    <div className={styles.bottomContent} suppressHydrationWarning={true}>
                         <p className={styles.copyright}>
                             © {currentYear} BlogSpace. All rights reserved.
                         </p>
-                        <div className={styles.bottomLinks}>
+                        <div className={styles.bottomLinks} suppressHydrationWarning={true}>
                             <Link href="/privacy" className={styles.bottomLink}>
                                 Privacy Policy
                             </Link>
@@ -163,10 +163,10 @@ const Footer = () => {
             </div>
 
             {/* Background Elements */}
-            <div className={styles.backgroundElements}>
-                <div className={styles.glowOrb} style={{ top: '20%', left: '10%' }}></div>
-                <div className={styles.glowOrb} style={{ top: '60%', right: '15%' }}></div>
-                <div className={styles.glowOrb} style={{ bottom: '30%', left: '70%' }}></div>
+            <div className={styles.backgroundElements} suppressHydrationWarning={true}>
+                <div className={styles.glowOrb} style={{ top: '20%', left: '10%' }} suppressHydrationWarning={true}></div>
+                <div className={styles.glowOrb} style={{ top: '60%', right: '15%' }} suppressHydrationWarning={true}></div>
+                <div className={styles.glowOrb} style={{ bottom: '30%', left: '70%' }} suppressHydrationWarning={true}></div>
             </div>
         </footer>
     );

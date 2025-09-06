@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
 import { useQuery } from '@apollo/client/react';
 import GET_POST_BY_ID from './Query';
 import styles from './blog-detail.module.scss';
@@ -11,8 +11,11 @@ const BlogDetailPage = ({ params }) => {
     const [liked, setLiked] = useState(false);
     const [comment, setComment] = useState('');
     
+    // Unwrap params using React.use() for Next.js 15
+    const { id } = use(params);
+    
     const { loading, error, data } = useQuery(GET_POST_BY_ID, {
-        variables: { id: params.id }
+        variables: { id }
     });
 
     if (loading) {
