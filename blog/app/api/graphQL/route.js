@@ -7,7 +7,7 @@ const typeDefs = `#graphql
     type User {
         id: ID!
         name: String!
-        email: String!
+        email: String
         profilePicture: String
     }
     # Post Schema
@@ -63,13 +63,14 @@ const typeDefs = `#graphql
 `;
 
 const resolvers = {
-    Post:{
+    Post: {
         author: async (post) => {
             try {
-                const author = await DBOperation.fetchUserById(post.author);
+                const author = await DBOperation.fetchUserById(post.id);
+                if (!author) return null;
                 return {
-                    ...author.toObject(),
-                    id: author._id.toString()
+                    ...author,
+                    id: author.id || author._id?.toString() || null
                 };
             } catch (error) {
                 console.error('Error fetching author:', error);
@@ -90,7 +91,7 @@ const resolvers = {
                 throw new Error('Failed to fetch posts');
             }
         },
-        
+
         post: async (_, { id }) => {
             try {
                 const post = await DBOperation.fetchBlogById(id);
@@ -124,8 +125,8 @@ const resolvers = {
             try {
                 const posts = await DBOperation.fetchBlogsByCategory(category);
                 return posts.map(post => ({
-                    ...post.toObject(),
-                    id: post._id.toString()
+                    ...post,
+                    id: post.id // Neo4j uses 'id' property
                 }));
             } catch (error) {
                 console.error('Error fetching posts by category:', error);
@@ -151,22 +152,22 @@ const resolvers = {
         createPost: async (_, { input }) => {
             try {
                 const { title, content, tags, category, seoTitle, seoDescription } = input;
-                
-                const newPost = await DBOperation.savePost(title, content, tags, category);
-                
-                // Update SEO fields if provided
-                if (seoTitle || seoDescription) {
-                    newPost.seoTitle = seoTitle;
-                    newPost.seoDescription = seoDescription;
-                    await newPost.save();
+                const result = await DBOperation.savePost(title, content, tags, category);
+                const newPost = result.post;
+                // Convert Neo4j datetime object to ISO string for createdAt
+                if (newPost.createdAt && typeof newPost.createdAt === 'object') {
+                    const dt = newPost.createdAt;
+                    newPost.createdAt = `${dt.year.low}-${String(dt.month.low).padStart(2, '0')}-${String(dt.day.low).padStart(2, '0')}T${String(dt.hour.low).padStart(2, '0')}:${String(dt.minute.low).padStart(2, '0')}:${String(dt.second.low).padStart(2, '0')}.${dt.nanosecond.low}Z`;
                 }
-
+                // Attach SEO fields if provided
+                if (seoTitle) newPost.seoTitle = seoTitle;
+                if (seoDescription) newPost.seoDescription = seoDescription;
                 return {
                     success: true,
                     message: 'Post created successfully',
                     post: {
-                        ...newPost.toObject(),
-                        id: newPost._id.toString()
+                        ...newPost,
+                        id: newPost.id
                     }
                 };
             } catch (error) {
