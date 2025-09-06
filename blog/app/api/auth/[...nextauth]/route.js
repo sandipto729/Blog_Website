@@ -96,7 +96,7 @@ const authOptions = {
         return false;
       }
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       // Add database ID to JWT token
       if (user) {
         await connectDB();
@@ -105,17 +105,54 @@ const authOptions = {
           token.id = dbUser._id.toString();
           token.profilePicture = dbUser.profilePicture;
           token.name = dbUser.name;
+          token.bio = dbUser.bio;
+          token.location = dbUser.location;
+          token.website = dbUser.website;
         }
       }
+      
+      // Handle session update trigger (when profile is updated)
+      if (trigger === 'update' && session) {
+        await connectDB();
+        const dbUser = await User.findById(token.id);
+        if (dbUser) {
+          token.profilePicture = dbUser.profilePicture;
+          token.name = dbUser.name;
+          token.bio = dbUser.bio;
+          token.location = dbUser.location;
+          token.website = dbUser.website;
+        }
+      }
+      
       return token;
     },
-    async session({ session, token }) {
-      // Add database information to session
+    async session({ session, token, trigger }) {
+      // Always fetch fresh data from database for consistent updates
       if (token.id) {
-        session.user.id = token.id;
-        session.user.profilePicture = token.profilePicture;
-        session.user.name = token.name;
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id);
+          if (dbUser) {
+            session.user.id = token.id;
+            session.user.profilePicture = dbUser.profilePicture;
+            session.user.name = dbUser.name;
+            session.user.bio = dbUser.bio;
+            session.user.location = dbUser.location;
+            session.user.website = dbUser.website;
+            session.user.email = dbUser.email;
+          }
+        } catch (error) {
+          console.error('Error fetching fresh user data in session:', error);
+          // Fallback to token data if database fetch fails
+          session.user.id = token.id;
+          session.user.profilePicture = token.profilePicture;
+          session.user.name = token.name;
+          session.user.bio = token.bio;
+          session.user.location = token.location;
+          session.user.website = token.website;
+        }
       }
+      
       return session;
     },
   },
@@ -124,7 +161,7 @@ const authOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, 
-    updateAge: 24 * 60 * 60, 
+    updateAge: 0, // Always update session on every request
   },
   jwt: {
     maxAge: 30 * 24 * 60 * 60, 
