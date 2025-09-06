@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import styles from './CreatePost.module.scss'
 import { useMutation } from '@apollo/client/react';
 import { CREATE_POST } from './mutation';
+import { isNSFWImage } from '@/lib/nsfwCheck';
 
 
 const CreatePost = () => {
@@ -72,7 +73,7 @@ const CreatePost = () => {
   }
 
   // Handle image upload
-    const handleImageUpload = async (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
@@ -88,6 +89,33 @@ const CreatePost = () => {
 
     setImageUploading(true)
     try {
+      // Create image element for NSFW detection
+      const img = new Image()
+      const imageUrl = URL.createObjectURL(file)
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = reject
+        img.src = imageUrl
+        img.crossOrigin = 'anonymous'
+      })
+
+      // Check for NSFW content
+      console.log('Checking image for NSFW content...')
+      const isNSFW = await isNSFWImage(img)
+      
+      // Clean up object URL
+      URL.revokeObjectURL(imageUrl)
+      
+      if (isNSFW) {
+        alert('This image contains inappropriate content and cannot be uploaded.')
+        setImageUploading(false)
+        e.target.value = ''
+        return
+      }
+
+      console.log('Image passed NSFW check, uploading...')
+
       const formData = new FormData()
       formData.append('image', file)
 
@@ -109,14 +137,14 @@ const CreatePost = () => {
         const selection = window.getSelection()
         const range = selection.getRangeAt(0)
         
-        const img = document.createElement('img')
-        img.src = data.url
-        img.style.maxWidth = '100%'
-        img.style.height = 'auto'
-        img.style.margin = '10px 0'
-        img.style.borderRadius = '8px'
+        const imgElement = document.createElement('img')
+        imgElement.src = data.url
+        imgElement.style.maxWidth = '100%'
+        imgElement.style.height = 'auto'
+        imgElement.style.margin = '10px 0'
+        imgElement.style.borderRadius = '8px'
         
-        range.insertNode(img)
+        range.insertNode(imgElement)
         range.collapse(false)
         handleContentChange()
       }
