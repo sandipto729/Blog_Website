@@ -34,22 +34,6 @@ const userSchema = new mongoose.Schema({
         type: Array,
         default: []
     },
-    posts: {
-        type: Array,
-        default: []
-    },
-    comments: {
-        type: Array,
-        default: []
-    },
-    likes: {
-        type: Array,
-        default: []
-    },
-    dislikes: {
-        type: Array,
-        default: []
-    },
     password: {
         type: String,
     },

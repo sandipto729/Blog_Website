@@ -3,3 +3,24 @@
     padding: 0;
     box-sizing: border-box;
 }
+
+/* Prevent browser extensions from interfering with hydration */
+body {
+    /* Prevent extensions from adding attributes that cause hydration mismatches */
+    isolation: isolate;
+}
+
+/* Hide browser extension attributes from affecting layout */
+[bis_skin_checked],
+[__processed_81322d38-05d0-4162-badf-8531800b4ac6__],
+[bis_register] {
+    /* These attributes are added by browser extensions and should not affect styling */
+    /* No styles needed, this selector is for documentation purposes */
+    pointer-events: inherit;
+}
+
+/* Global suppressHydrationWarning helper */
+*[data-extension-modified] {
+    /* Mark elements modified by extensions */
+    --extension-modified: true;
+}

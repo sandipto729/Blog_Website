@@ -32,10 +32,10 @@ const Header = () => {
 
     return (
         <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}>
-            <div className={styles.container}>
+            <div className={styles.container} suppressHydrationWarning={true}>
                 {/* Logo */}
                 <Link href="/" className={styles.logo}>
-                    <div className={styles.logoIcon}>📝</div>
+                    <div className={styles.logoIcon} suppressHydrationWarning={true}>📝</div>
                     <span className={styles.logoText}>BlogSpace</span>
                 </Link>
 
@@ -60,9 +60,9 @@ const Header = () => {
                 </nav>
 
                 {/* Auth Section */}
-                <div className={styles.authSection}>
+                <div className={styles.authSection} suppressHydrationWarning={true}>
                     {status === 'loading' ? (
-                        <div className={styles.loadingSpinner}></div>
+                        <div className={styles.loadingSpinner} suppressHydrationWarning={true}></div>
                     ) : session ? (
                         <div className={styles.userMenu}>
                             <div className={styles.userInfo}>
@@ -115,7 +115,7 @@ const Header = () => {
             </div>
 
             {/* Mobile Menu */}
-            <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.open : ''}`}>
+            <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.open : ''}`} suppressHydrationWarning={true}>
                 <nav className={styles.mobileNav}>
                     <Link 
                         href="/" 
@@ -152,7 +152,7 @@ const Header = () => {
                 </nav>
 
                 {/* Mobile Auth */}
-                <div className={styles.mobileAuth}>
+                <div className={styles.mobileAuth} suppressHydrationWarning={true}>
                     {session ? (
                         <div className={styles.mobileUserInfo}>
                             <div className={styles.mobileUserDetails}>
@@ -182,7 +182,7 @@ const Header = () => {
                             </button>
                         </div>
                     ) : (
-                        <div className={styles.mobileAuthButtons}>
+                        <div className={styles.mobileAuthButtons} suppressHydrationWarning={true}>
                             <Link 
                                 href="/login" 
                                 className={styles.mobileLoginButton}

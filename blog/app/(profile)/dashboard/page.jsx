@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import styles from './dashboard.module.scss'
 import { clearSessionCache, forceSessionRefresh } from '../../../lib/sessionUtils'
+import toast from 'react-hot-toast'
 
 const Dashboard = () => {
   const { data: session, status, update: updateSession } = useSession()
@@ -62,7 +63,8 @@ const Dashboard = () => {
     if (!file) return
 
     setIsUploading(true)
-    try {
+    
+    const uploadPromise = (async () => {
       const formData = new FormData()
       formData.append('image', file)
 
@@ -74,12 +76,25 @@ const Dashboard = () => {
       if (response.ok) {
         const data = await response.json()
         setProfileData(prev => ({ ...prev, profilePicture: data.url }))
+        return 'Profile picture uploaded successfully!'
       } else {
         throw new Error('Upload failed')
       }
+    })()
+
+    toast.promise(
+      uploadPromise,
+      {
+        loading: 'Uploading profile picture...',
+        success: 'Profile picture uploaded!',
+        error: 'Failed to upload image. Please try again.'
+      }
+    )
+
+    try {
+      await uploadPromise
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('Failed to upload image. Please try again.')
     } finally {
       setIsUploading(false)
     }
@@ -110,19 +125,19 @@ const Dashboard = () => {
         // Force session refresh
         await forceSessionRefresh()
         
-        alert('Profile updated successfully! The page will refresh to show your changes.')
+        toast.success('Profile updated successfully! Page will refresh to show changes.')
         
         // Hard reload as final backup
         setTimeout(() => {
           window.location.reload()
-        }, 500)
+        }, 1500)
       } else {
         const errorData = await response.json()
         throw new Error(errorData.message || 'Update failed')
       }
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert(error.message || 'Failed to update profile. Please try again.')
+      toast.error(error.message || 'Failed to update profile. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -191,7 +206,12 @@ const Dashboard = () => {
               <div className={styles.cardIcon}>📚</div>
               <h3>My Posts</h3>
               <p>Manage and edit your published blog posts and drafts</p>
-              <button className={styles.cardButton}>Manage Posts</button>
+              <button 
+                className={styles.cardButton}
+                onClick={() => router.push(`/post/${session?.user?.id}`)}
+              >
+                Manage Posts
+              </button>
             </div>
           </div>
 

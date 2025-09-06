@@ -24,8 +24,8 @@ const CreatePostPage = () => {
         height: '100vh',
         background: 'linear-gradient(135deg, #1a202c 0%, #2d3748 100%)',
         color: 'white'
-      }}>
-        <div>Loading...</div>
+      }} suppressHydrationWarning={true}>
+        <div suppressHydrationWarning={true}>Loading...</div>
       </div>
     )
   }

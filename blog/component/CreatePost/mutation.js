@@ -17,3 +17,22 @@ export const CREATE_POST = gql`
         }
     }
 `;
+
+
+export const POST_EDIT = gql`
+    mutation UpdatePost($id: ID!, $input: CreatePostInput!) {
+        updatePost(id: $id, input: $input) {
+            success
+            message
+            post {
+                id
+                title
+                slug
+                content
+                category
+                tags
+                updatedAt
+            }
+        }
+    }
+`;
