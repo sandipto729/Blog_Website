@@ -28,4 +28,14 @@ const GET_POST_BY_ID = gql`
     }
 `;
 
-export default GET_POST_BY_ID;
+const GET_POST_LIKES= gql`
+    query fetchLikes($postId: ID!) {
+        fetchLikes(postId: $postId) {
+            id
+            name
+            profilePicture
+        }
+    }
+`;
+
+export {GET_POST_BY_ID, GET_POST_LIKES};

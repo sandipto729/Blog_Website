@@ -66,7 +66,7 @@ const typeDefs = `#graphql
         published: Boolean
         featured: Boolean
         views: Int
-        likes: [ID]
+        likes: Int
         readTime: Int
         seoTitle: String
         seoDescription: String
@@ -98,12 +98,14 @@ const typeDefs = `#graphql
         postsByAuthor(authorId: ID!): [Post!]!
         postsByCategory(category: String!): [Post!]!
         postsByTag(tag: String!): [Post!]!
+        fetchLikes(postId: ID!): [User!]!
     }
 
     type Mutation {
         createPost(input: CreatePostInput!): PostResponse!
         updatePost(id: ID!, input: CreatePostInput!): PostResponse!
         deletePost(id: ID!): PostResponse!
+        PostLikeToggle(postId: ID!, userId: ID!): PostResponse!
     }
 `;
 
@@ -190,6 +192,19 @@ const resolvers = {
                 console.error('Error fetching posts by tag:', error);
                 throw new Error('Failed to fetch posts by tag');
             }
+        },
+
+        fetchLikes: async (_, { postId }) => {
+            try {
+                const users = await DBOperation.fetchUsersWhoLikedPost(postId);
+                return users.map(user => ({
+                    ...user,
+                    id: user.id || user._id?.toString() || null
+                }));
+            } catch (error) {
+                console.error('Error fetching likes for post:', error);
+                throw new Error('Failed to fetch likes for post');
+            }
         }
     },
 
@@ -271,6 +286,36 @@ const resolvers = {
                 return {
                     success: false,
                     message: error.message || 'Failed to delete post',
+                    post: null
+                };
+            }
+        },
+
+        PostLikeToggle: async (_, { postId, userId }) => {
+            try {
+                const result = await DBOperation.LikePost(postId, userId);
+                if (!result) {
+                    return {
+                        success: false,
+                        message: 'Post not found or like toggle failed',
+                        post: null
+                    };
+                }
+                const updatedPost = processPostData(result);
+                
+                return {
+                    success: true,
+                    message: 'Post like status toggled successfully',
+                    post: {
+                        ...updatedPost,
+                        id: updatedPost.id
+                    }
+                };
+            } catch (error) {
+                console.error('Error toggling post like:', error);
+                return {
+                    success: false,
+                    message: error.message || 'Failed to toggle post like',
                     post: null
                 };
             }
