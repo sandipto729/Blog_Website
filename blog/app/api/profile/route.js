@@ -4,6 +4,7 @@ import { authOptions } from '../../api/auth/[...nextauth]/route';
 // import { connectDB } from '@/lib/mongo';
 import User from '@/model/user';
 import connectDB from '@/lib/mongo'
+import { driver } from '@/lib/neo4j'
 
 export async function GET() {
   try {
@@ -111,6 +112,28 @@ export async function PUT(request) {
         select: '-password'
       }
     );
+
+    try{
+        const neo4jSession = driver.session();
+        await neo4jSession.run(
+            `MATCH (u:User {id: $userId})
+             SET u.name = $name,
+                 u.profilePicture = $profilePicture
+             RETURN u`,
+            {
+                userId: session.user.id,
+                name: name.trim(),
+                profilePicture: profilePicture || user.profilePicture || session.user.image || ''
+            }
+        );
+        await neo4jSession.close();
+    } catch (error) {
+        console.error('Error updating user in Neo4j:', error);
+        return NextResponse.json(
+            { message: 'Failed to update user in Neo4j' },
+            { status: 500 }
+        );
+    }
 
     if (!user) {
       return NextResponse.json(

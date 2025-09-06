@@ -101,9 +101,34 @@ export async function fetchAllBlogs() {
 
 export async function fetchBlogById(id) {
     try {
-        await connectDB()
-        const blog = await BlogModel.findById(id)
-        return blog
+        const neo4jSession = driver.session()
+        try {
+            const result = await neo4jSession.run(
+                `MATCH (p:Post {id: $id}) 
+                MATCH (u:User)-[:AUTHORED]->(p)
+                MATCH (p)-[:IN_CATEGORY]->(c:Category)
+                OPTIONAL MATCH (p)-[:TAGGED_WITH]->(t:Tag)
+                WITH p, u, c, collect(t.name) AS tags
+                SET p.authorId = u.id,
+                    p.authorName = u.name,
+                    p.authorProfilePicture = u.profilePicture,
+                    p.category = c.name,
+                    p.tags = tags
+                 RETURN p`,
+                { id }
+            )
+            if (result.records.length === 0) {
+                throw new Error('Blog not found')
+            }
+            const props = result.records[0].get('p').properties;
+            if (props.createdAt && typeof props.createdAt === 'object') {
+                const dt = props.createdAt;
+                props.createdAt = `${dt.year.low}-${String(dt.month.low).padStart(2, '0')}-${String(dt.day.low).padStart(2, '0')}T${String(dt.hour.low).padStart(2, '0')}:${String(dt.minute.low).padStart(2, '0')}:${String(dt.second.low).padStart(2, '0')}.${dt.nanosecond.low}Z`;
+            }
+            return props;
+        } finally {
+            neo4jSession.close()
+        }
     } catch (error) {
         console.error('Error fetching blog by ID:', error)
         throw new Error('Failed to fetch blog by ID')

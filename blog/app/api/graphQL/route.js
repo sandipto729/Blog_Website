@@ -99,8 +99,8 @@ const resolvers = {
                     throw new Error('Post not found');
                 }
                 return {
-                    ...post.toObject(),
-                    id: post._id.toString()
+                    ...post,
+                    id: post.id
                 };
             } catch (error) {
                 console.error('Error fetching post:', error);
