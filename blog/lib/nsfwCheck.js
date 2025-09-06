@@ -17,7 +17,7 @@ async function isNSFWImage(imageElement) {
     // Check if any prediction is NSFW (e.g., 'Porn', 'Hentai', 'Sexy')
     const nsfwClasses = ['Porn', 'Hentai', 'Sexy'];
     const isNSFW = predictions.some(pred => 
-      nsfwClasses.includes(pred.className) && pred.probability > 0.6
+      nsfwClasses.includes(pred.className) && pred.probability > 0.8
     );
     
     console.log('NSFW Predictions:', predictions);
