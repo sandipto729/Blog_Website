@@ -294,21 +294,23 @@ const resolvers = {
         PostLikeToggle: async (_, { postId, userId }) => {
             try {
                 const result = await DBOperation.LikePost(postId, userId);
-                if (!result) {
+                if (!result || !result.success) {
                     return {
                         success: false,
                         message: 'Post not found or like toggle failed',
                         post: null
                     };
                 }
-                const updatedPost = processPostData(result);
+                
+                // The LikePost function returns an object with success, liked, likes, and post
+                const updatedPost = processPostData(result.post);
                 
                 return {
                     success: true,
                     message: 'Post like status toggled successfully',
                     post: {
-                        ...updatedPost,
-                        id: updatedPost.id
+                        id: updatedPost.id,
+                        likes: result.likes || updatedPost.likes || 0
                     }
                 };
             } catch (error) {
