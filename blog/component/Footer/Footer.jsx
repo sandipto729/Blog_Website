@@ -1,11 +1,83 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import styles from './Footer.module.scss';
+import {handleNewsLetter} from './NewsLetter'
+import toast from 'react-hot-toast';
 
 const Footer = () => {
     const currentYear = new Date().getFullYear();
+    const [email, setEmail] = useState('');
+
+    const handleNewsletterSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!email.trim()) {
+            toast.error('📧 Please enter your email address', {
+                style: {
+                    background: '#2d3748',
+                    color: '#f7fafc',
+                    border: '1px solid #f56565',
+                },
+            });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('email', email);
+
+        const submitPromise = handleNewsLetter(formData);
+        
+        toast.promise(
+            submitPromise,
+            {
+                loading: '📮 Subscribing to newsletter...',
+                success: (result) => {
+                    if (result.success) {
+                        setEmail(''); // Clear the input on success
+                        return '✅ Successfully subscribed! Welcome email sent to your inbox 📧';
+                    } else {
+                        throw new Error(result.message);
+                    }
+                },
+                error: (err) => {
+                    if (err.message.includes('duplicate') || err.message.includes('E11000')) {
+                        return '📬 You are already subscribed to our newsletter!';
+                    }
+                    return `❌ ${err.message || 'Failed to subscribe. Please try again.'}`;
+                },
+            },
+            {
+                style: {
+                    minWidth: '300px',
+                    background: '#2d3748',
+                    color: '#f7fafc',
+                    border: '1px solid #4a5568',
+                },
+                success: {
+                    duration: 4000,
+                    iconTheme: {
+                        primary: '#48bb78',
+                        secondary: '#f7fafc',
+                    },
+                },
+                error: {
+                    duration: 3000,
+                    iconTheme: {
+                        primary: '#f56565',
+                        secondary: '#f7fafc',
+                    },
+                },
+                loading: {
+                    iconTheme: {
+                        primary: '#667eea',
+                        secondary: '#f7fafc',
+                    },
+                },
+            }
+        );
+    };
 
     return (
         <footer className={styles.footer}>
@@ -107,9 +179,9 @@ const Footer = () => {
                                 </a>
                             </li>
                             <li>
-                                <a href="#" className={styles.footerLink}>
+                                <Link href="/contact" className={styles.footerLink}>
                                     Contact Us
-                                </a>
+                                </Link>
                             </li>
                             <li>
                                 <a href="#" className={styles.footerLink}>
@@ -127,11 +199,13 @@ const Footer = () => {
                         <p className={styles.newsletterDescription}>
                             Get the latest posts and updates delivered to your inbox.
                         </p>
-                        <form className={styles.newsletterForm}>
+                        <form className={styles.newsletterForm} onSubmit={handleNewsletterSubmit}>
                             <input
                                 type="email"
                                 placeholder="Enter your email"
                                 className={styles.newsletterInput}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                             <button type="submit" className={styles.newsletterButton}>
