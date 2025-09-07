@@ -6,13 +6,13 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {GET_POST_BY_ID,  GET_POST_LIKES} from './Query';
 import { POST_LIKE_TOGGLE } from './mutation';
+import Comments from '../../../../component/Comments/Comments';
 import styles from './blog-detail.module.scss';
 
 const BlogDetailPage = ({ params }) => {
     const router = useRouter();
     const { data: session } = useSession();
     const [liked, setLiked] = useState(false);
-    const [comment, setComment] = useState('');
     const [showLikesList, setShowLikesList] = useState(false);
     
     // Unwrap params using React.use() for Next.js 15
@@ -111,15 +111,6 @@ const BlogDetailPage = ({ params }) => {
             console.error('Error liking post:', error);
             console.error('Error details:', error.message, error.graphQLErrors, error.networkError);
             alert('Failed to like post. Please try again.');
-        }
-    };
-
-    const handleCommentSubmit = (e) => {
-        e.preventDefault();
-        if (comment.trim()) {
-            // TODO: Implement comment submission with mutation
-            console.log('Comment:', comment);
-            setComment('');
         }
     };
 
@@ -262,72 +253,7 @@ const BlogDetailPage = ({ params }) => {
                     </div>
 
                     {/* Comments Section */}
-                    <div className={styles.commentsSection}>
-                        <h3 className={styles.commentsTitle}>
-                            Comments ({post.comments?.length || 0})
-                        </h3>
-
-                        {/* Comment Form */}
-                        <form className={styles.commentForm} onSubmit={handleCommentSubmit}>
-                            <textarea
-                                className={styles.commentInput}
-                                placeholder="Share your thoughts..."
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                rows={4}
-                            />
-                            <button 
-                                type="submit" 
-                                className={styles.commentSubmit}
-                                disabled={!comment.trim()}
-                            >
-                                Post Comment
-                            </button>
-                        </form>
-
-                        {/* Existing Comments */}
-                        <div className={styles.commentsList}>
-                            {post.comments && post.comments.length > 0 ? (
-                                post.comments.map((comment, index) => (
-                                    <div key={index} className={styles.commentItem}>
-                                        <div className={styles.commentAuthor}>
-                                            {comment.author?.profilePicture ? (
-                                                <img 
-                                                    src={comment.author.profilePicture} 
-                                                    alt={comment.author.name} 
-                                                    className={styles.commentAvatar}
-                                                />
-                                            ) : (
-                                                <div className={styles.commentAvatarPlaceholder}>
-                                                    {comment.author?.name?.charAt(0) || '?'}
-                                                </div>
-                                            )}
-                                            <div>
-                                                <h4 className={styles.commentAuthorName}>
-                                                    {comment.author?.name || 'Anonymous'}
-                                                </h4>
-                                                <span className={styles.commentDate}>
-                                                    {new Date(comment.createdAt).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <p className={styles.commentContent}>
-                                            {comment.content}
-                                        </p>
-                                        <div className={styles.commentActions}>
-                                            <button className={styles.commentLike}>
-                                                🤍 {comment.likes?.length || 0}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className={styles.noComments}>
-                                    <p>No comments yet. Be the first to share your thoughts!</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <Comments postId={id} />
                 </div>
             </div>
 

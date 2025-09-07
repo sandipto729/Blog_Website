@@ -140,7 +140,8 @@ export async function fetchBlogById(id) {
             }
             
             // Add likes count to the returned data
-            props.likes = typeof likesCount === 'object' && likesCount.low !== undefined ? likesCount.low : (likesCount || 0);
+            const likesValue = typeof likesCount === 'object' && likesCount.low !== undefined ? likesCount.low : (likesCount || 0);
+            props.likes = typeof likesValue === 'number' ? likesValue : parseInt(likesValue) || 0;
             
             return props;
         } finally {
@@ -432,7 +433,9 @@ export async function LikePost(postId, userId) {
             return {
                 success: true,
                 liked: record.get('liked'),
-                likes: record.get('likes').toInt(),
+                likes: typeof record.get('likes') === 'object' && record.get('likes').low !== undefined 
+                    ? record.get('likes').low 
+                    : parseInt(record.get('likes')) || 0,
                 post: postData
             };
         } finally {
