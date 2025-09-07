@@ -18,6 +18,49 @@ const BlogDetailPage = ({ params }) => {
     // Unwrap params using React.use() for Next.js 15
     const { id } = use(params);
     
+    // Function to clean and extract excerpt from HTML content
+    const getCleanExcerpt = (htmlContent, maxLength = 200) => {
+        if (!htmlContent) return '';
+        
+        // First, replace block elements with spaces to preserve word separation
+        let text = htmlContent
+            .replace(/<\/?(p|div|br|h[1-6]|li|tr|td)[^>]*>/gi, ' ')
+            .replace(/<\/?(ul|ol|table|thead|tbody)[^>]*>/gi, ' ');
+        
+        // Remove remaining HTML tags
+        text = text.replace(/<[^>]*>/g, '');
+        
+        // Replace HTML entities
+        text = text
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&hellip;/g, '...')
+            .replace(/&mdash;/g, '—')
+            .replace(/&ndash;/g, '–');
+        
+        // Remove extra whitespace and normalize spaces
+        text = text
+            .replace(/\s+/g, ' ')
+            .trim();
+        
+        // If text is longer than maxLength, truncate and add ellipsis
+        if (text.length > maxLength) {
+            text = text.substring(0, maxLength);
+            // Find the last space to avoid cutting words
+            const lastSpace = text.lastIndexOf(' ');
+            if (lastSpace > maxLength * 0.8) { // Only if the last space is not too far back
+                text = text.substring(0, lastSpace);
+            }
+            text += '...';
+        }
+        
+        return text;
+    };
+    
     const { loading, error, data, refetch } = useQuery(GET_POST_BY_ID, {
         variables: { id }
     });
@@ -139,8 +182,11 @@ const BlogDetailPage = ({ params }) => {
                     
                     <h1 className={styles.title}>{post.title}</h1>
                     
-                    {post.excerpt && (
-                        <p className={styles.excerpt}>{post.excerpt}</p>
+                    {/* Clean excerpt from content */}
+                    {post.content && (
+                        <p className={styles.excerpt}>
+                            {getCleanExcerpt(post.content, 180)}
+                        </p>
                     )}
 
                     {/* Author & Meta Info */}
