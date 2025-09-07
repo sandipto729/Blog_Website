@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useQuery } from '@apollo/client/react';
 import Fetch_POSTS from './Query';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -143,7 +143,9 @@ export default function Page({searchParams}) {
 					Discover insights, tutorials, and stories from our community
 				</p>
 			</div>
-			<BlogList searchParams={searchParams} />
+			<Suspense fallback={<div>Loading...</div>}>
+				<BlogList searchParams={searchParams} />
+			</Suspense>
 		</div>
 	);
 }
