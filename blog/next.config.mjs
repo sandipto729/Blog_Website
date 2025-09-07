@@ -2,7 +2,7 @@
 const nextConfig = {
   // Suppress hydration warnings caused by browser extensions
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify is now enabled by default in Next.js 13+, removed deprecated option
   experimental: {
     // This helps with hydration issues
     optimizePackageImports: ['react-hot-toast']
