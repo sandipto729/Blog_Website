@@ -42,8 +42,8 @@ app.prepare().then(() => {
           content: data.content
         };
 
-        
-        const result = await axios.post('http://localhost:3000/api/comment', {
+
+        const result = await axios.post(`${process.env.SERVER_URL}/api/comment`, {
           postID: variables.postID,
           parentID: variables.parentID,
           userID: variables.userID,
