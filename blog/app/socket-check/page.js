@@ -6,6 +6,7 @@ import { socket } from "@/socket";
 export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
+  const[messages, setMessages] = useState([]);
 
   useEffect(() => {
     if (socket.connected) {
@@ -29,9 +30,15 @@ export default function Home() {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
+    socket.on("welcome", (message) => {
+      setMessages((messages) => [...messages, message]);
+      console.log(message);
+    });
+
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
+      socket.off("welcome");
     };
   }, []);
 
@@ -39,6 +46,12 @@ export default function Home() {
     <div>
       <p>Status: { isConnected ? "connected" : "disconnected" }</p>
       <p>Transport: { transport }</p>
+      <div>Messages:</div>
+      <ul>
+        {messages.map((msg, index) => (
+          <li key={index}>{msg}</li>
+        ))}
+      </ul>
     </div>
   );
 }

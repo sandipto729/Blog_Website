@@ -19,10 +19,26 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     console.log("A user connected");
 
+    // Send welcome message immediately when user connects
+    socket.emit("welcome", "Hello from server - Welcome!");
+
+    // Send periodic messages to this specific user
+    let messageCount = 1;
+    const messageInterval = setInterval(() => {
+      if (messageCount <= 10) {
+        socket.emit("welcome", `Hello from server - Message ${messageCount}`);
+        messageCount++;
+      } else {
+        clearInterval(messageInterval);
+      }
+    }, 2000);
+
     socket.on("disconnect", () => {
       console.log("A user disconnected");
+      clearInterval(messageInterval);
     });
   });
+//    io.emit("welcome", "Hello from server");
 
   httpServer
     .once("error", (err) => {

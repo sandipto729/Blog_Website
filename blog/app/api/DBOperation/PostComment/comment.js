@@ -2,10 +2,9 @@ import { v4 as uuidv4 } from "uuid";
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/route'
 import { driver } from '@/lib/neo4j'
-import { Server } from 'socket.io';
 
 
-export async function SaveComment(postID, parentID, userID, content, io) {
+export async function SaveComment(postID, parentID, userID, content) {
     const neo4jSession = driver.session();
     const session = await getServerSession(authOptions);
 
@@ -57,27 +56,6 @@ export async function SaveComment(postID, parentID, userID, content, io) {
                 { commentId: commentID, postId: postID }
             );
         }
-
-        // Emit the `commentAdded` event
-        if (io) {
-            console.log('Emitting commentAdded event:', {
-                id: commentID,
-                content,
-                createdAt,
-                userId: userID,
-                parentId: parentID || null,
-                postId: postID
-            });
-            io.emit('commentAdded', {
-                id: commentID,
-                content,
-                createdAt,
-                userId: userID,
-                parentId: parentID || null,
-                postId: postID
-            });
-        }
-
         return {
             success: true,
             comment: {
@@ -164,3 +142,6 @@ export async function FetchComments(postID) {
         neo4jSession.close();
     }
 }
+
+const CommentDBOperation = { SaveComment, FetchComments };
+export default CommentDBOperation;

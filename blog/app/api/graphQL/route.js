@@ -1,6 +1,7 @@
 import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import DBOperation from "../DBOperation/Post/Blog.js";
+import CommentDBOperation from "../DBOperation/PostComment/comment.js";
 
 // Helper function to convert Neo4j datetime to ISO string
 const convertNeo4jDateTime = (dateTime) => {
@@ -74,6 +75,25 @@ const typeDefs = `#graphql
         updatedAt: String
     }
 
+    #comment Save Schema
+    type CommentSave {
+        id: ID!
+        content: String!
+        createdAt: String
+        userId: ID!
+        parentId: ID
+        postId: ID!
+    }
+
+    #comment Fetch Schema
+    type Comment {
+        id: ID!
+        content: String!
+        createdAt: String
+        user: User
+        replies: [Comment]
+    }
+
     # Input types for mutations
     input CreatePostInput {
         title: String!
@@ -91,6 +111,12 @@ const typeDefs = `#graphql
         message: String!
         post: Post
     }
+    
+    type CommentResponse {
+        success: Boolean!
+        message: String!
+        comment: CommentSave
+    }
 
     type Query {
         posts: [Post!]!
@@ -99,6 +125,7 @@ const typeDefs = `#graphql
         postsByCategory(category: String!): [Post!]!
         postsByTag(tag: String!): [Post!]!
         fetchLikes(postId: ID!): [User!]!
+        fetchComments(postId: ID!): [Comment!]!
     }
 
     type Mutation {
@@ -106,6 +133,7 @@ const typeDefs = `#graphql
         updatePost(id: ID!, input: CreatePostInput!): PostResponse!
         deletePost(id: ID!): PostResponse!
         PostLikeToggle(postId: ID!, userId: ID!): PostResponse!
+        SaveComment(postID: ID!, parentID: ID, userID: ID!, content: String!): CommentResponse!
     }
 `;
 
@@ -204,6 +232,22 @@ const resolvers = {
             } catch (error) {
                 console.error('Error fetching likes for post:', error);
                 throw new Error('Failed to fetch likes for post');
+            }
+        },
+
+        fetchComments: async (_, { postId }) => {
+            try {
+                const result = await CommentDBOperation.FetchComments(postId);
+                if (!result || !result.success) {
+                    throw new Error('Failed to fetch comments');
+                }
+                return result.comments.map(comment => ({
+                    ...comment,
+                    id: comment.id || comment._id?.toString() || null
+                }));
+            } catch (error) {
+                console.error('Error fetching comments for post:', error);
+                throw new Error('Failed to fetch comments for post');
             }
         }
     },
@@ -320,6 +364,27 @@ const resolvers = {
                     message: error.message || 'Failed to toggle post like',
                     post: null
                 };
+            }
+        },
+
+        SaveComment: async (_, { postID, parentID, userID, content }) => {
+            try {
+                const result = await CommentDBOperation.SaveComment(postID, parentID, userID, content);
+                if (!result || !result.success) {
+                    return null;
+                }
+                
+                return {
+                    success: true,
+                    message: 'Comment saved successfully',
+                    comment: {
+                        ...result.comment,
+                        id: result.comment.id || result.comment._id?.toString() || null
+                    }
+                };
+            } catch (error) {
+                console.error('Error saving comment:', error);
+                throw new Error('Failed to save comment');
             }
         }
 

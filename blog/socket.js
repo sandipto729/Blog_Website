@@ -2,7 +2,7 @@
 
 import { io } from "socket.io-client";
 
-const SERVER_URL = "http://localhost:3000"; // Update this if the server runs on a different URL or port
+const SERVER_URL = "http://localhost:3000"; 
 
 export const socket = io(SERVER_URL, {
   path: "/socket.io",

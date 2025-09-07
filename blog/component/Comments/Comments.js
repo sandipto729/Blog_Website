@@ -1,57 +1,39 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useSession } from 'next-auth/react';
-// import { useComments } from '../../hooks/useComments';
+import { useQuery } from '@apollo/client/react';
+import FETCH_COMMENTS from './Query';
 import styles from './Comments.module.scss';
 
 const Comments = ({ postId }) => {
-  const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [replyContent, setReplyContent] = useState('');
   const { data: session } = useSession();
-  // const { comments, loading, error, submitComment } = useComments(postId);
-  const comments = []; // Placeholder until useComments is implemented
-  const loading = false; // Placeholder until useComments is implemented
-  const error = null; // Placeholder until useComments is implemented
-  const submitComment = async (content, parentId = null) => {
-    // Placeholder function until useComments is implemented
-    return true;
-  };
+  const { data, loading, error } = useQuery(FETCH_COMMENTS, {
+    variables: { postId },
+    skip: !postId
+  });
 
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const success = await submitComment(newComment);
-    if (success) {
-      setNewComment('');
-    }
-  };
-
-  const handleSubmitReply = async (e, parentId) => {
-    e.preventDefault();
-    if (!replyContent.trim()) return;
-
-    const success = await submitComment(replyContent, parentId);
-    if (success) {
-      setReplyContent('');
-      setReplyingTo(null);
-    }
-  };
+  const comments = data?.fetchComments || [];
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
+    
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
     
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`;
     return date.toLocaleDateString();
   };
 
-  if (loading && comments.length === 0) {
+  if (loading) {
     return (
       <div className={styles.commentsSection}>
         <h3 className={styles.commentsTitle}>Comments</h3>
@@ -68,13 +50,13 @@ const Comments = ({ postId }) => {
 
       {error && (
         <div className={styles.error}>
-          {error}
+          Error loading comments: {error.message}
         </div>
       )}
 
-      {/* Comment Form */}
+      {/* Comment Form - Placeholder for future implementation */}
       {session ? (
-        <form className={styles.commentForm} onSubmit={handleSubmitComment}>
+        <div className={styles.commentForm}>
           <div className={styles.commentInputWrapper}>
             <img 
               src={session.user?.image || session.user?.profilePicture || ''}
@@ -90,22 +72,12 @@ const Comments = ({ postId }) => {
             </div>
             <textarea
               className={styles.commentInput}
-              placeholder="Share your thoughts..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share your thoughts... (Coming soon)"
+              disabled
               rows={3}
             />
           </div>
-          <div className={styles.commentActions}>
-            <button 
-              type="submit" 
-              className={styles.submitButton}
-              disabled={!newComment.trim()}
-            >
-              Post Comment
-            </button>
-          </div>
-        </form>
+        </div>
       ) : (
         <div className={styles.loginPrompt}>
           <p>Please <a href="/login">login</a> to post comments.</p>
@@ -150,68 +122,6 @@ const Comments = ({ postId }) => {
               <div className={styles.commentContent}>
                 <p>{comment.content}</p>
               </div>
-
-              {/* Comment Actions */}
-              <div className={styles.commentFooter}>
-                <button 
-                  className={styles.replyButton}
-                  onClick={() => {
-                    setReplyingTo(replyingTo === comment.id ? null : comment.id);
-                    setReplyContent('');
-                  }}
-                >
-                  💬 Reply
-                </button>
-              </div>
-
-              {/* Reply Form */}
-              {replyingTo === comment.id && session && (
-                <form 
-                  className={styles.replyForm} 
-                  onSubmit={(e) => handleSubmitReply(e, comment.id)}
-                >
-                  <div className={styles.replyInputWrapper}>
-                    <img 
-                      src={session.user?.image || session.user?.profilePicture || ''}
-                      alt={session.user?.name || 'User'}
-                      className={styles.userAvatar}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextElementSibling.style.display = 'flex';
-                      }}
-                    />
-                    <div className={styles.userAvatarPlaceholder}>
-                      {session.user?.name?.charAt(0) || 'U'}
-                    </div>
-                    <textarea
-                      className={styles.replyInput}
-                      placeholder={`Reply to ${comment.user?.name}...`}
-                      value={replyContent}
-                      onChange={(e) => setReplyContent(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                  <div className={styles.replyActions}>
-                    <button 
-                      type="button"
-                      className={styles.cancelButton}
-                      onClick={() => {
-                        setReplyingTo(null);
-                        setReplyContent('');
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit" 
-                      className={styles.submitButton}
-                      disabled={!replyContent.trim()}
-                    >
-                      Reply
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* Replies */}
               {comment.replies && comment.replies.length > 0 && (
