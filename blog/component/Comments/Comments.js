@@ -82,20 +82,43 @@ const Comments = ({ postId }) => {
         console.log("User data in commentData:", commentData.user);
         console.log("All commentData keys:", Object.keys(commentData));
         
-        // Add the comment to real-time comments immediately for instant UI update
         const newComment = {
-          id: commentData.commentID || Date.now().toString(), // fallback ID
+          id: commentData.commentID || Date.now().toString(),
           content: commentData.content,
           createdAt: commentData.createdAt || new Date().toISOString(),
           user: commentData.user || {
             id: commentData.userID,
             name: 'Anonymous',
             profilePicture: ''
-          },
-          replies: []
+          }
         };
-        
-        setRealTimeComments(prev => [...prev, newComment]);
+
+        // Check if this is a reply to another comment
+        if (commentData.parentID) {
+          // This is a reply - add it to the parent comment's replies
+          setRealTimeComments(prev => 
+            prev.map(comment => 
+              comment.id === commentData.parentID 
+                ? { ...comment, replies: [...(comment.replies || []), newComment] }
+                : comment
+            )
+          );
+          
+          // Also check database comments for the parent
+          const allComments = [...comments, ...realTimeComments];
+          const parentExists = allComments.some(comment => comment.id === commentData.parentID);
+          
+          if (parentExists) {
+            // Force a refetch to get the updated reply structure from database
+            setTimeout(() => {
+              refetch();
+            }, 500);
+          }
+        } else {
+          // This is a main comment
+          const mainComment = { ...newComment, replies: [] };
+          setRealTimeComments(prev => [...prev, mainComment]);
+        }
         
         // Also refetch from database for consistency
         // setTimeout(() => {
