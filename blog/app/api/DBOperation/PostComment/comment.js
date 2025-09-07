@@ -1,17 +1,24 @@
-import { v4 as uuidv4 } from "uuid"; 
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { v4 as uuidv4 } from "uuid";
 import { driver } from '@/lib/neo4j'
-import { Server } from 'socket.io';
+import connectDB from '@/lib/mongo'
+import UserModel from '@/model/user'
 
+export async function SaveComment(postID, parentID, userID, content) {
+    let user; // Declare user variable outside the try block
 
-export async function SaveComment(postID, parentID, userID, content, io) {
-    const neo4jSession = driver.session();
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-        throw new Error("Authentication required");
+    try {
+        connectDB();
+        user = await UserModel.findById(userID);
+        if (!user) {
+            throw new Error("User not found");
+        }
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        throw new Error("Failed to fetch user");
     }
+
+    const neo4jSession = driver.session();
+
     try {
         const commentID = uuidv4();
         const createdAt = new Date().toISOString();
@@ -22,9 +29,9 @@ export async function SaveComment(postID, parentID, userID, content, io) {
              ON CREATE SET u.name = $userName, 
                            u.profilePicture = $userProfilePicture`,
             {
-                userId: session.user.id,
-                userName: session.user.name,
-                userProfilePicture: session.user.profilePicture || session.user.image || ''
+                userId: userID,
+                userName: user.name,
+                userProfilePicture: user.profilePicture || ''
             }
         );
 
@@ -57,27 +64,6 @@ export async function SaveComment(postID, parentID, userID, content, io) {
                 { commentId: commentID, postId: postID }
             );
         }
-
-        // Emit the `commentAdded` event
-        if (io) {
-            console.log('Emitting commentAdded event:', {
-                id: commentID,
-                content,
-                createdAt,
-                userId: userID,
-                parentId: parentID || null,
-                postId: postID
-            });
-            io.emit('commentAdded', {
-                id: commentID,
-                content,
-                createdAt,
-                userId: userID,
-                parentId: parentID || null,
-                postId: postID
-            });
-        }
-
         return {
             success: true,
             comment: {
@@ -86,7 +72,12 @@ export async function SaveComment(postID, parentID, userID, content, io) {
                 createdAt,
                 userId: userID,
                 parentId: parentID || null,
-                postId: postID
+                postId: postID,
+                user: {
+                    id: userID,
+                    name: user.name,
+                    profilePicture: user.profilePicture || ''
+                }
             }
         };
     } catch (error) {
@@ -113,7 +104,7 @@ export async function FetchComments(postID) {
         );
 
         const comments = [];
-        
+
         for (const record of result.records) {
             const commentNode = record.get('c').properties;
             const userNode = record.get('u').properties;
@@ -130,7 +121,7 @@ export async function FetchComments(postID) {
             const replies = repliesResult.records.map(replyRecord => {
                 const replyNode = replyRecord.get('reply').properties;
                 const replyUserNode = replyRecord.get('replyUser').properties;
-                
+
                 return {
                     id: replyNode.id,
                     content: replyNode.content,
@@ -164,3 +155,6 @@ export async function FetchComments(postID) {
         neo4jSession.close();
     }
 }
+
+const CommentDBOperation = { SaveComment, FetchComments };
+export default CommentDBOperation;
