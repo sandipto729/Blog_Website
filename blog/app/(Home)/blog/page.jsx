@@ -1,12 +1,13 @@
 "use client";
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useQuery } from '@apollo/client/react';
 import Fetch_POSTS from './Query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import styles from './blog.module.scss';
 
-const BlogList = ({searchParams}) => {
-	const category = searchParams?.category || 'all'; 
+const BlogList = () => {
+	const searchParams = useSearchParams();
+	const category = searchParams.get('category') || 'all'; 
 	const router = useRouter();
 	const { loading, error, data } = useQuery(Fetch_POSTS, {
 		variables: { category: category }
@@ -142,7 +143,9 @@ export default function Page({searchParams}) {
 					Discover insights, tutorials, and stories from our community
 				</p>
 			</div>
-			<BlogList searchParams={searchParams} />
+			<Suspense fallback={<div>Loading...</div>}>
+				<BlogList searchParams={searchParams} />
+			</Suspense>
 		</div>
 	);
 }

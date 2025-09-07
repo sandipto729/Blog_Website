@@ -335,6 +335,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
+  margin-bottom: 1rem;
   
   &:hover {
     background: rgba(120, 197, 255, 0.2);
@@ -348,6 +349,114 @@
     border-color: rgba(255, 119, 198, 0.5);
     color: #ff77c6;
   }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.likesCount {
+  position: relative;
+  display: inline-block;
+  color: #78c5ff;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(120, 197, 255, 0.1);
+  }
+}
+
+.likesPopup {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(120, 197, 255, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  margin-top: 0.5rem;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid rgba(15, 23, 42, 0.95);
+  }
+}
+
+.likesPopupHeader {
+  color: #78c5ff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.likesPopupList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.likesPopupItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: rgba(120, 197, 255, 0.1);
+  }
+}
+
+.likesPopupAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(120, 197, 255, 0.3);
+}
+
+.likesPopupAvatarPlaceholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(120, 197, 255, 0.2);
+  border: 2px solid rgba(120, 197, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #78c5ff;
+  font-size: 0.875rem;
+}
+
+.likesPopupName {
+  color: #e2e8f0;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
 .likeIcon {

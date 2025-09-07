@@ -46,18 +46,18 @@ export default function RootLayout({ children }) {
       </head>
       <SessionWrapper>
         <ApolloWrapper>
-          <body className={inter.className} suppressHydrationWarning={true}>
-            <div 
-              style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
-              suppressHydrationWarning={true}
-            >
-              <Header />
-              <main style={{ flex: 1, paddingTop: '80px' }} suppressHydrationWarning={true}>
-                {children}
-              </main>
-              <Footer />
-            </div>
-            <Toaster
+            <body className={inter.className} suppressHydrationWarning={true}>
+              <div 
+                style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
+                suppressHydrationWarning={true}
+              >
+                <Header />
+                <main style={{ flex: 1, paddingTop: '80px' }} suppressHydrationWarning={true}>
+                  {children}
+                </main>
+                <Footer />
+              </div>
+              <Toaster
               position="top-right"
               toastOptions={{
                 duration: 4000,

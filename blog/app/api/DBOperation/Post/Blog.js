@@ -114,13 +114,15 @@ export async function fetchBlogById(id) {
                     p.authorProfilePicture = u.profilePicture,
                     p.category = c.name,
                     p.tags = tags
-                 RETURN p`,
+                 RETURN p, coalesce(p.likes, 0) AS likes`,
                 { id }
             )
             if (result.records.length === 0) {
                 throw new Error('Blog not found')
             }
             const props = result.records[0].get('p').properties;
+            const likesCount = result.records[0].get('likes');
+            
             // Handle datetime conversion in the database layer
             if (props.createdAt && typeof props.createdAt === 'object') {
                 const dt = props.createdAt;
@@ -136,6 +138,11 @@ export async function fetchBlogById(id) {
                 const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
                 props.createdAt = date.toISOString();
             }
+            
+            // Add likes count to the returned data
+            const likesValue = typeof likesCount === 'object' && likesCount.low !== undefined ? likesCount.low : (likesCount || 0);
+            props.likes = typeof likesValue === 'number' ? likesValue : parseInt(likesValue) || 0;
+            
             return props;
         } finally {
             await neo4jSession.close()
@@ -358,7 +365,120 @@ export async function deleteBlog(postId) {
     }
 }
 
+// Post Like Toggle
+export async function LikePost(postId, userId) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session) {
+            throw new Error('Authentication required');
+        }
+
+        const neo4jSession = driver.session();
+        try {
+            // Ensure user exists in Neo4j (create if not)
+            await neo4jSession.run(
+                `MERGE (u:User {id: $userId})
+                 ON CREATE SET u.name = $userName, 
+                               u.profilePicture = $userProfilePicture`,
+                {
+                    userId: session.user.id,
+                    userName: session.user.name,
+                    userProfilePicture: session.user.profilePicture || session.user.image || ''
+                }
+            );
+
+            // Check if user already liked the post
+            const checkResult = await neo4jSession.run(
+                `MATCH (u:User {id: $userId}), (p:Post {id: $postId})
+                 OPTIONAL MATCH (u)-[r:LIKED]->(p)
+                 RETURN r IS NOT NULL AS alreadyLiked`,
+                { postId, userId: session.user.id }
+            );
+
+            if (checkResult.records.length === 0) {
+                throw new Error('Post or User not found');
+            }
+
+            const alreadyLiked = checkResult.records[0].get('alreadyLiked');
+
+            let result;
+            if (alreadyLiked) {
+                // Unlike the post
+                result = await neo4jSession.run(
+                    `MATCH (u:User {id: $userId})-[r:LIKED]->(p:Post {id: $postId})
+                     DELETE r
+                     SET p.likes = coalesce(p.likes, 1) - 1
+                     RETURN false AS liked, p.likes AS likes, p`,
+                    { postId, userId: session.user.id }
+                );
+            } else {
+                // Like the post
+                result = await neo4jSession.run(
+                    `MATCH (u:User {id: $userId}), (p:Post {id: $postId})
+                     MERGE (u)-[:LIKED]->(p)
+                     SET p.likes = coalesce(p.likes, 0) + 1
+                     RETURN true AS liked, p.likes AS likes, p`,
+                    { postId, userId: session.user.id }
+                );
+            }
+
+            if (result.records.length === 0) {
+                throw new Error('Failed to toggle like');
+            }
+
+            const record = result.records[0];
+            const postData = record.get('p').properties;
+            
+            return {
+                success: true,
+                liked: record.get('liked'),
+                likes: typeof record.get('likes') === 'object' && record.get('likes').low !== undefined 
+                    ? record.get('likes').low 
+                    : parseInt(record.get('likes')) || 0,
+                post: postData
+            };
+        } finally {
+            neo4jSession.close();
+        }
+    } catch (error) {
+        console.error('Error liking post:', error);
+        throw new Error(`Failed to like post: ${error.message}`);
+    }
+}
+
+
+//fetch all the likes of a post
+export async function fetchUsersWhoLikedPost(postId) {
+    try {
+        const neo4jSession = driver.session();
+        try {
+            const result = await neo4jSession.run(
+                `MATCH (u:User)-[:LIKED]->(p:Post {id: $postId})
+                 RETURN u`,
+                { postId }
+            );
+            return result.records.map(record => {
+                const user = record.get('u').properties;
+                return {
+                    id: user.id,
+                    name: user.name,
+                    profilePicture: user.profilePicture,
+                    // add other user properties here if needed
+                };
+            });
+        } finally {
+            neo4jSession.close();
+        }
+    } catch (error) {
+        console.error('Error fetching users who liked post:', error);
+        throw new Error('Failed to fetch users who liked post');
+    }
+}
+
+
 // Default export with all functions
+
 const DBOperation = {
     savePost,
     fetchAllBlogs,
@@ -368,7 +488,9 @@ const DBOperation = {
     fetchBlogsByTag,
     fetchUserById,
     EditBlog,
-    deleteBlog
+    deleteBlog,
+    LikePost,
+    fetchUsersWhoLikedPost
 }
 
 export default DBOperation
