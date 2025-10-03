@@ -3,9 +3,10 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import styles from './CreatePost.module.scss'
-import { useMutation } from '@apollo/client/react';
+import { useMutation, useQuery } from '@apollo/client/react';
 import { CREATE_POST } from './mutation';
 import {POST_EDIT} from './mutation';
+import { GET_POST_BY_ID } from './Query';
 import { isNSFWImage } from '@/lib/nsfwCheck';
 import toast from 'react-hot-toast';
 
@@ -23,6 +24,52 @@ const CreatePost = () => {
   // SSR-safe edit mode detection
   const [isEditMode, setIsEditMode] = useState(false)
   const [editPostId, setEditPostId] = useState(null)
+  
+  // Query to fetch post data when editing
+  const { data: postQueryData, loading: postQueryLoading, error: postQueryError } = useQuery(GET_POST_BY_ID, {
+    variables: { id: editPostId || "dummy" },
+    skip: !isEditMode || !editPostId,
+    errorPolicy: 'all',
+    fetchPolicy: 'cache-and-network',
+    onCompleted: (data) => {
+      console.log('✅ Query completed with full data:', JSON.stringify(data, null, 2))
+      console.log('✅ Data keys:', Object.keys(data || {}))
+      console.log('✅ Post data:', data?.post)
+      
+      if (data?.post) {
+        const post = data.post
+        console.log('✅ Post object keys:', Object.keys(post))
+        console.log('✅ Post title:', post.title)
+        console.log('✅ Post content length:', post.content?.length)
+        console.log('✅ Post tags:', post.tags)
+        console.log('✅ Post category:', post.category)
+        
+        setPostData({
+          title: post.title || '',
+          content: post.content || '',
+          tags: (post.tags || []).join(', '),
+          category: post.category || 'general'
+        })
+        
+        console.log('✅ PostData state updated')
+        
+        // Set editor content after a brief delay to ensure it's rendered
+        setTimeout(() => {
+          console.log('✅ Setting editor content, editor exists:', !!editorRef.current)
+          if (editorRef.current && post.content) {
+            editorRef.current.innerHTML = post.content
+            console.log('✅ Editor content set')
+          }
+        }, 100)
+      } else {
+        console.log('❌ No post data in response. Full response:', data)
+      }
+    },
+    onError: (error) => {
+      console.error('❌ GraphQL query error:', error)
+    }
+  })
+
   const [postData, setPostData] = useState({
     title: '',
     content: '',
@@ -32,57 +79,58 @@ const CreatePost = () => {
   const [imageUploading, setImageUploading] = useState(false)
   const [activeTools, setActiveTools] = useState({})
 
-  // Pre-fill form data and detect edit mode after mount
+  // Debug logs
+  console.log('🐛 Debug info:', {
+    isEditMode,
+    editPostId,
+    postQueryLoading,
+    postQueryError: postQueryError?.message,
+    hasData: !!postQueryData,
+    currentPostData: postData
+  })
+
+  // Detect edit mode and postId from URL parameters
   useEffect(() => {
     const edit = searchParams.get('edit') === 'true'
     const postId = searchParams.get('postId')
+    console.log('🔍 URL params detected:', { 
+      edit, 
+      postId, 
+      allParams: Object.fromEntries(searchParams.entries()) 
+    })
     setIsEditMode(edit)
     setEditPostId(postId)
+  }, [searchParams])
 
-    if (edit && searchParams.get('title')) {
-      let urlTitle = ''
-      let urlContent = ''
-      let urlTags = ''
-      let urlCategory = 'general'
-      try {
-        urlTitle = decodeURIComponent(searchParams.get('title') || '')
-      } catch (e) {
-        urlTitle = searchParams.get('title') || ''
+  // Handle post data when query completes
+  useEffect(() => {
+    if (postQueryData?.post && isEditMode) {
+      console.log('🔄 Processing post data from useEffect:', postQueryData.post)
+      const post = postQueryData.post
+      
+      const newPostData = {
+        title: post.title || '',
+        content: post.content || '',
+        tags: (post.tags || []).join(', '),
+        category: post.category || 'general'
       }
-      try {
-        urlContent = decodeURIComponent(searchParams.get('content') || '')
-      } catch (e) {
-        urlContent = searchParams.get('content') || ''
-      }
-      try {
-        urlTags = decodeURIComponent(searchParams.get('tags') || '')
-      } catch (e) {
-        urlTags = searchParams.get('tags') || ''
-      }
-      try {
-        urlCategory = decodeURIComponent(searchParams.get('category') || 'general')
-      } catch (e) {
-        urlCategory = searchParams.get('category') || 'general'
-      }
-
-      setPostData({
-        title: urlTitle,
-        content: urlContent,
-        tags: urlTags,
-        category: urlCategory
-      })
-
+      
+      console.log('🔄 Setting new post data:', newPostData)
+      setPostData(newPostData)
+      
       // Set editor content after a brief delay to ensure it's rendered
       setTimeout(() => {
-        if (editorRef.current && urlContent) {
-          editorRef.current.innerHTML = urlContent
+        console.log('🔄 Setting editor content, editor exists:', !!editorRef.current)
+        if (editorRef.current && post.content) {
+          editorRef.current.innerHTML = post.content
+          console.log('🔄 Editor content set successfully')
         }
-      }, 100)
+      }, 500) // Increased delay to ensure DOM is ready
     }
-  }, [isEditMode, searchParams])
+  }, [postQueryData, isEditMode])
 
-  // Use mutation loading state
-  const isLoading = mutationLoading
+  // Use mutation loading state and post query loading
+  const isLoading = mutationLoading || updateLoading || (isEditMode && postQueryLoading)
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -334,6 +382,37 @@ const handleSubmit = async (e) => {
     }
   )
 }
+
+  // Show loading state when fetching post data in edit mode
+  if (isEditMode && postQueryLoading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.createPostCard}>
+          <div className={styles.loading}>
+            <div className={styles.spinner}></div>
+            <p>Loading post data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if post query failed
+  if (isEditMode && postQueryError) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.createPostCard}>
+          <div className={styles.error}>
+            <h2>Error Loading Post</h2>
+            <p>{postQueryError.message}</p>
+            <button onClick={() => window.location.reload()} className={styles.retryBtn}>
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.container}>

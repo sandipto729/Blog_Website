@@ -37,8 +37,8 @@ const UserPostsPage = () => {
   const isOwner = session?.user?.id === userId
 
   const handleEditPost = (post) => {
-    // Redirect to create-post page with post data for editing
-    const editUrl = `/create-post?edit=true&postId=${post.id}&title=${encodeURIComponent(post.title)}&content=${encodeURIComponent(post.content)}&category=${post.category || 'general'}&tags=${encodeURIComponent((post.tags || []).join(', '))}`
+    // Redirect to create-post page with just postId - let it fetch the data
+    const editUrl = `/create-post?edit=true&postId=${post.id}`
     router.push(editUrl)
   }
 

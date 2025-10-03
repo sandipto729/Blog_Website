@@ -2,13 +2,22 @@ import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import DBOperation from "../DBOperation/Post/Blog.js";
 import CommentDBOperation from "../DBOperation/PostComment/comment.js";
+import {
+    generatePostEmbedding,
+    batchGenerateEmbeddings,
+    findSimilarPosts,
+    getEmbeddingStats,
+    shouldRefreshEmbedding,
+    resetChangeCounters
+} from "@/lib/graphSage.js";
+
 
 // Helper function to convert Neo4j datetime to ISO string
 const convertNeo4jDateTime = (dateTime) => {
     if (!dateTime || typeof dateTime !== 'object') {
         return dateTime;
     }
-    
+
     try {
         const { year, month, day, hour, minute, second, nanosecond } = dateTime;
         const yearVal = year?.low || year || 0;
@@ -18,7 +27,7 @@ const convertNeo4jDateTime = (dateTime) => {
         const minuteVal = minute?.low || minute || 0;
         const secondVal = second?.low || second || 0;
         const nanosecondVal = nanosecond?.low || nanosecond || 0;
-        
+
         const milliseconds = Math.floor(nanosecondVal / 1000000);
         const date = new Date(yearVal, monthVal - 1, dayVal, hourVal, minuteVal, secondVal, milliseconds);
         return date.toISOString();
@@ -31,18 +40,18 @@ const convertNeo4jDateTime = (dateTime) => {
 // Helper function to process post data and convert datetime fields
 const processPostData = (post) => {
     if (!post) return post;
-    
+
     const processedPost = { ...post };
-    
+
     // Convert datetime fields
     if (processedPost.createdAt) {
         processedPost.createdAt = convertNeo4jDateTime(processedPost.createdAt);
     }
-    
+
     if (processedPost.updatedAt) {
         processedPost.updatedAt = convertNeo4jDateTime(processedPost.updatedAt);
     }
-    
+
     return processedPost;
 };
 
@@ -118,6 +127,34 @@ const typeDefs = `#graphql
         comment: CommentSave
     }
 
+    # Embedding types
+    type EmbeddingStats {
+        totalPosts: Int!
+        postsWithEmbedding: Int!
+        coverage: Float!
+        methods: [String!]!
+        dimensions: [Int!]!
+    }
+    
+    type SimilarPost {
+        postId: ID!
+        title: String!
+        excerpt: String
+        category: String
+        tags: [String]
+        similarity: Float!
+        likes: Int!
+        comments: Int!
+    }
+    
+    type EmbeddingResult {
+        postId: ID!
+        embedding: [Float!]
+        method: String!
+        dimensions: Int
+        cached: Boolean!
+    }
+
     type Query {
         posts: [Post!]!
         post(id: ID!): Post
@@ -126,6 +163,11 @@ const typeDefs = `#graphql
         postsByTag(tag: String!): [Post!]!
         fetchLikes(postId: ID!): [User!]!
         fetchComments(postId: ID!): [Comment!]!
+        
+        # Embedding queries
+        embeddingStats: EmbeddingStats!
+        similarPosts(postId: ID!, limit: Int): [SimilarPost!]!
+        checkEmbeddingRefresh(postId: ID!): Boolean!
     }
 
     type Mutation {
@@ -134,6 +176,11 @@ const typeDefs = `#graphql
         deletePost(id: ID!): PostResponse!
         PostLikeToggle(postId: ID!, userId: ID!): PostResponse!
         SaveComment(postID: ID!, parentID: ID, userID: ID!, content: String!): CommentResponse!
+        
+        # Embedding mutations
+        generateEmbedding(postId: ID!, forceRefresh: Boolean): EmbeddingResult!
+        batchGenerateEmbeddings(postIds: [ID!]): [EmbeddingResult!]!
+        resetChangeCounters(postId: ID!): Boolean!
     }
 `;
 
@@ -150,6 +197,40 @@ const resolvers = {
             } catch (error) {
                 console.error('Error fetching author:', error);
                 throw new Error('Failed to fetch author');
+            }
+        },
+        likes: async (post) => {
+            try {
+                const likeUser = await DBOperation.fetchUsersWhoLikedPost(post.id);
+                return likeUser.length;
+            } catch (error) {
+                console.error('Error fetching likes:', error);
+                return 0;
+            }
+        }
+    },
+    SimilarPost: {
+        likes: async (post) => {
+            try {
+                const likeUser = await DBOperation.fetchUsersWhoLikedPost(post.postId);
+                return likeUser.length;
+            } catch (error) {
+                console.error('Error fetching likes:', error);
+                return 0;
+            }
+        },
+        comments: async (post) => {
+            try{
+                const result = await CommentDBOperation.FetchComments(post.postId);
+                console.log('Comments result:', result);
+                // FetchComments returns { success: true, comments: [...] }
+                if (result && result.success && result.comments) {
+                    return result.comments.length;
+                }
+                return 0;
+            }catch(error){
+                console.error('Error fetching comments:', error);
+                return 0;
             }
         }
     },
@@ -249,6 +330,39 @@ const resolvers = {
                 console.error('Error fetching comments for post:', error);
                 throw new Error('Failed to fetch comments for post');
             }
+        },
+
+        // Embedding resolvers
+        embeddingStats: async () => {
+            try {
+                const stats = await getEmbeddingStats();
+                return stats;
+            } catch (error) {
+                console.error('Error fetching embedding stats:', error);
+                throw new Error('Failed to fetch embedding statistics');
+            }
+        },
+
+        similarPosts: async (_, { postId, limit = 5 }) => {
+            try {
+                // Ensure limit is an integer
+                const limitInt = parseInt(limit) || 5;
+                const similarPosts = await findSimilarPosts(postId, limitInt);
+                return similarPosts;
+            } catch (error) {
+                console.error('Error fetching similar posts:', error);
+                throw new Error('Failed to fetch similar posts');
+            }
+        },
+
+        checkEmbeddingRefresh: async (_, { postId }) => {
+            try {
+                const needsRefresh = await shouldRefreshEmbedding(postId);
+                return needsRefresh;
+            } catch (error) {
+                console.error('Error checking embedding refresh:', error);
+                throw new Error('Failed to check embedding refresh status');
+            }
         }
     },
 
@@ -258,11 +372,11 @@ const resolvers = {
                 const { title, content, tags, category, seoTitle, seoDescription } = input;
                 const result = await DBOperation.savePost(title, content, tags, category);
                 const newPost = processPostData(result.post);
-                
+
                 // Attach SEO fields if provided
                 if (seoTitle) newPost.seoTitle = seoTitle;
                 if (seoDescription) newPost.seoDescription = seoDescription;
-                
+
                 return {
                     success: true,
                     message: 'Post created successfully',
@@ -292,7 +406,7 @@ const resolvers = {
                     };
                 }
                 const updatedPost = processPostData(result);
-                
+
                 return {
                     success: true,
                     message: 'Post updated successfully',
@@ -345,10 +459,10 @@ const resolvers = {
                         post: null
                     };
                 }
-                
+
                 // The LikePost function returns an object with success, liked, likes, and post
                 const updatedPost = processPostData(result.post);
-                
+
                 return {
                     success: true,
                     message: 'Post like status toggled successfully',
@@ -373,7 +487,7 @@ const resolvers = {
                 if (!result || !result.success) {
                     return null;
                 }
-                
+
                 return {
                     success: true,
                     message: 'Comment saved successfully',
@@ -385,6 +499,43 @@ const resolvers = {
             } catch (error) {
                 console.error('Error saving comment:', error);
                 throw new Error('Failed to save comment');
+            }
+        },
+
+        // Embedding mutations
+        generateEmbedding: async (_, { postId, forceRefresh = false }) => {
+            try {
+                const result = await generatePostEmbedding(postId, forceRefresh);
+                return result;
+            } catch (error) {
+                console.error('Error generating embedding:', error);
+                throw new Error('Failed to generate embedding');
+            }
+        },
+
+        batchGenerateEmbeddings: async (_, { postIds }) => {
+            try {
+                const results = await batchGenerateEmbeddings(postIds);
+
+                // Filter out error results and return only successful embeddings
+                if (Array.isArray(results)) {
+                    return results.filter(result => result.embedding && !result.error);
+                } else {
+                    return [results];
+                }
+            } catch (error) {
+                console.error('Error batch generating embeddings:', error);
+                throw new Error('Failed to batch generate embeddings');
+            }
+        },
+
+        resetChangeCounters: async (_, { postId }) => {
+            try {
+                await resetChangeCounters(postId);
+                return true;
+            } catch (error) {
+                console.error('Error resetting change counters:', error);
+                throw new Error('Failed to reset change counters');
             }
         }
 

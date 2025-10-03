@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { driver } from '@/lib/neo4j'
 import connectDB from '@/lib/mongo'
 import UserModel from '@/model/user'
+import { generatePostEmbedding, shouldRefreshEmbedding, resetChangeCounters } from '@/lib/graphSage'
 
 export async function SaveComment(postID, parentID, userID, content) {
     let user; // Declare user variable outside the try block
@@ -60,10 +61,28 @@ export async function SaveComment(postID, parentID, userID, content) {
         } else {
             await neo4jSession.run(
                 `MATCH (c:Comment {id: $commentId}), (p:Post {id: $postId})
-                 MERGE (c)-[:COMMENTED_ON]->(p)`,
+                 MERGE (c)-[:COMMENTED_ON]->(p)
+                 SET p.commentsChange = coalesce(p.commentsChange, 0) + 1`,
                 { commentId: commentID, postId: postID }
             );
         }
+        // Check if embedding needs refresh due to comment activity (only for top-level comments)
+        if (!parentID) {
+            try {
+                const needsRefresh = await shouldRefreshEmbedding(postID);
+                
+                if (needsRefresh) {
+                    console.log('🧠 Regenerating embedding due to comment activity...');
+                    await generatePostEmbedding(postID, true);
+                    await resetChangeCounters(postID);
+                    console.log('✅ Embedding updated successfully');
+                }
+            } catch (embeddingError) {
+                console.error('❌ Failed to update embedding after comment:', embeddingError);
+                // Don't fail the comment operation if embedding fails
+            }
+        }
+
         return {
             success: true,
             comment: {

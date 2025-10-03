@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import {GET_POST_BY_ID,  GET_POST_LIKES} from './Query';
 import { POST_LIKE_TOGGLE } from './mutation';
 import Comments from '../../../../component/Comments/Comments';
+import SimilarPosts from '../../../../component/SimilarPosts/SimilarPosts';
 import styles from './blog-detail.module.scss';
 
 const BlogDetailPage = ({ params }) => {
@@ -300,6 +301,9 @@ const BlogDetailPage = ({ params }) => {
 
                     {/* Comments Section */}
                     <Comments postId={id} />
+
+                    {/* Similar Posts Section */}
+                    <SimilarPosts postId={id} limit={5} />
                 </div>
             </div>
 

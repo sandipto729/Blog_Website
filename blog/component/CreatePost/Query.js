@@ -1,18 +1,22 @@
 import { gql } from '@apollo/client';
 
-const Fetch_POSTS = gql`
-    query postsByCategory($category: String!) {
-        postsByCategory(category: $category) {
+export const GET_POST_BY_ID = gql`
+    query GetPostById($id: ID!) {
+        post(id: $id) {
             id
             title
-            category
+            content
+            excerpt
             tags
+            category
             author {
                 id
                 name
                 profilePicture
             }
+            slug
             published
+            featured
             views
             likes
             readTime
@@ -23,5 +27,3 @@ const Fetch_POSTS = gql`
         }
     }
 `;
-
-export default Fetch_POSTS;
