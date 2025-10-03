@@ -14,6 +14,7 @@ const Fetch_POSTS = gql`
             }
             published
             views
+            likes
             readTime
             seoTitle
             seoDescription

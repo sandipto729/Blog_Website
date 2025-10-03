@@ -82,8 +82,8 @@ const BlogList = () => {
 							<span>{post.author?.name || 'Anonymous'}</span>
 						</div>
 						<div className={styles.metaItem}>
-							<span className={styles.metaIcon}>👁️</span>
-							<span>{post.views || 0} views</span>
+							<span className={styles.metaIcon}>❤️</span>
+							<span>{post.likes || 0} likes</span>
 						</div>
 						{post.readTime && (
 							<div className={styles.metaItem}>

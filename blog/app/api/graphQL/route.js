@@ -2,21 +2,22 @@ import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import DBOperation from "../DBOperation/Post/Blog.js";
 import CommentDBOperation from "../DBOperation/PostComment/comment.js";
-import { 
-    generatePostEmbedding, 
-    batchGenerateEmbeddings, 
-    findSimilarPosts, 
+import {
+    generatePostEmbedding,
+    batchGenerateEmbeddings,
+    findSimilarPosts,
     getEmbeddingStats,
     shouldRefreshEmbedding,
     resetChangeCounters
 } from "@/lib/graphSage.js";
+
 
 // Helper function to convert Neo4j datetime to ISO string
 const convertNeo4jDateTime = (dateTime) => {
     if (!dateTime || typeof dateTime !== 'object') {
         return dateTime;
     }
-    
+
     try {
         const { year, month, day, hour, minute, second, nanosecond } = dateTime;
         const yearVal = year?.low || year || 0;
@@ -26,7 +27,7 @@ const convertNeo4jDateTime = (dateTime) => {
         const minuteVal = minute?.low || minute || 0;
         const secondVal = second?.low || second || 0;
         const nanosecondVal = nanosecond?.low || nanosecond || 0;
-        
+
         const milliseconds = Math.floor(nanosecondVal / 1000000);
         const date = new Date(yearVal, monthVal - 1, dayVal, hourVal, minuteVal, secondVal, milliseconds);
         return date.toISOString();
@@ -39,18 +40,18 @@ const convertNeo4jDateTime = (dateTime) => {
 // Helper function to process post data and convert datetime fields
 const processPostData = (post) => {
     if (!post) return post;
-    
+
     const processedPost = { ...post };
-    
+
     // Convert datetime fields
     if (processedPost.createdAt) {
         processedPost.createdAt = convertNeo4jDateTime(processedPost.createdAt);
     }
-    
+
     if (processedPost.updatedAt) {
         processedPost.updatedAt = convertNeo4jDateTime(processedPost.updatedAt);
     }
-    
+
     return processedPost;
 };
 
@@ -197,6 +198,40 @@ const resolvers = {
                 console.error('Error fetching author:', error);
                 throw new Error('Failed to fetch author');
             }
+        },
+        likes: async (post) => {
+            try {
+                const likeUser = await DBOperation.fetchUsersWhoLikedPost(post.id);
+                return likeUser.length;
+            } catch (error) {
+                console.error('Error fetching likes:', error);
+                return 0;
+            }
+        }
+    },
+    SimilarPost: {
+        likes: async (post) => {
+            try {
+                const likeUser = await DBOperation.fetchUsersWhoLikedPost(post.postId);
+                return likeUser.length;
+            } catch (error) {
+                console.error('Error fetching likes:', error);
+                return 0;
+            }
+        },
+        comments: async (post) => {
+            try{
+                const result = await CommentDBOperation.FetchComments(post.postId);
+                console.log('Comments result:', result);
+                // FetchComments returns { success: true, comments: [...] }
+                if (result && result.success && result.comments) {
+                    return result.comments.length;
+                }
+                return 0;
+            }catch(error){
+                console.error('Error fetching comments:', error);
+                return 0;
+            }
         }
     },
     Query: {
@@ -337,11 +372,11 @@ const resolvers = {
                 const { title, content, tags, category, seoTitle, seoDescription } = input;
                 const result = await DBOperation.savePost(title, content, tags, category);
                 const newPost = processPostData(result.post);
-                
+
                 // Attach SEO fields if provided
                 if (seoTitle) newPost.seoTitle = seoTitle;
                 if (seoDescription) newPost.seoDescription = seoDescription;
-                
+
                 return {
                     success: true,
                     message: 'Post created successfully',
@@ -371,7 +406,7 @@ const resolvers = {
                     };
                 }
                 const updatedPost = processPostData(result);
-                
+
                 return {
                     success: true,
                     message: 'Post updated successfully',
@@ -424,10 +459,10 @@ const resolvers = {
                         post: null
                     };
                 }
-                
+
                 // The LikePost function returns an object with success, liked, likes, and post
                 const updatedPost = processPostData(result.post);
-                
+
                 return {
                     success: true,
                     message: 'Post like status toggled successfully',
@@ -452,7 +487,7 @@ const resolvers = {
                 if (!result || !result.success) {
                     return null;
                 }
-                
+
                 return {
                     success: true,
                     message: 'Comment saved successfully',
@@ -481,7 +516,7 @@ const resolvers = {
         batchGenerateEmbeddings: async (_, { postIds }) => {
             try {
                 const results = await batchGenerateEmbeddings(postIds);
-                
+
                 // Filter out error results and return only successful embeddings
                 if (Array.isArray(results)) {
                     return results.filter(result => result.embedding && !result.error);
