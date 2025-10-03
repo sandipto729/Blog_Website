@@ -4,6 +4,7 @@ import UserModel from '@/model/user'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/route'
 import { driver } from '@/lib/neo4j'
+import { generatePostEmbedding, resetChangeCounters } from '@/lib/graphSage'
 
 export async function savePost(title, content, tags, category) {
     try {
@@ -73,6 +74,17 @@ export async function savePost(title, content, tags, category) {
             }
             
             const createdPost = result.records[0].get('p').properties
+            
+            // Generate initial embedding for the new post
+            try {
+                console.log('🧠 Generating initial embedding for new post...');
+                await generatePostEmbedding(createdPost.id, true);
+                console.log('✅ Initial embedding generated successfully');
+            } catch (embeddingError) {
+                console.error('❌ Failed to generate initial embedding:', embeddingError);
+                // Don't fail the post creation if embedding fails
+            }
+            
             return {
                 success: true,
                 post: createdPost
@@ -302,13 +314,32 @@ export async function EditBlog(postId, title, content, tags, category) {
 
         const neo4jSession = driver.session()
         try {
+            // First get the original content to calculate changes
+            const originalResult = await neo4jSession.run(
+                `MATCH (p:Post {id: $postId})
+                 RETURN p.title as originalTitle, p.content as originalContent`,
+                { postId }
+            );
+
+            let textChanges = 0;
+            if (originalResult.records.length > 0) {
+                const originalTitle = originalResult.records[0].get('originalTitle') || '';
+                const originalContent = originalResult.records[0].get('originalContent') || '';
+                
+                // Calculate character differences
+                const titleDiff = Math.abs(title.length - originalTitle.length);
+                const contentDiff = Math.abs(content.length - originalContent.length);
+                textChanges = titleDiff + contentDiff;
+            }
+
             const result = await neo4jSession.run(
                 `MATCH (p:Post {id: $postId})
                 SET p.title = $title,
                     p.content = $content,
                     p.excerpt = $excerpt,
                     p.slug = $slug,
-                    p.updatedAt = datetime()
+                    p.updatedAt = datetime(),
+                    p.textChanges = coalesce(p.textChanges, 0) + $textChanges
                 WITH p
                 OPTIONAL MATCH (p)-[r:TAGGED_WITH]->(t:Tag)
                 DELETE r
@@ -330,19 +361,40 @@ export async function EditBlog(postId, title, content, tags, category) {
                     excerpt,
                     slug,
                     tags: tags || [],
-                    category: category || 'general'
+                    category: category || 'general',
+                    textChanges
                 }
             )
+            
             if (result.records.length === 0) {
                 throw new Error('Post not found or update failed')
             }
-            return result.records[0].get('p').properties
+
+            const updatedPost = result.records[0].get('p').properties;
+
+            // Check if embedding needs refresh and regenerate if needed
+            try {
+                const { shouldRefreshEmbedding } = await import('@/lib/graphSage');
+                const needsRefresh = await shouldRefreshEmbedding(postId);
+                
+                if (needsRefresh) {
+                    console.log('🧠 Regenerating embedding due to significant changes...');
+                    await generatePostEmbedding(postId, true);
+                    await resetChangeCounters(postId);
+                    console.log('✅ Embedding updated successfully');
+                }
+            } catch (embeddingError) {
+                console.error('❌ Failed to update embedding:', embeddingError);
+                // Don't fail the edit if embedding fails
+            }
+
+            return updatedPost;
         } finally {
             neo4jSession.close()
         }
     } catch (error) {
-        console.error('Error fetching user by ID:', error)
-        throw new Error('Failed to fetch user by ID')
+        console.error('Error editing blog:', error)
+        throw new Error('Failed to edit blog')
     }
 }
 
@@ -408,7 +460,8 @@ export async function LikePost(postId, userId) {
                 result = await neo4jSession.run(
                     `MATCH (u:User {id: $userId})-[r:LIKED]->(p:Post {id: $postId})
                      DELETE r
-                     SET p.likes = coalesce(p.likes, 1) - 1
+                     SET p.likes = coalesce(p.likes, 1) - 1,
+                         p.likesChange = coalesce(p.likesChange, 0) + 1
                      RETURN false AS liked, p.likes AS likes, p`,
                     { postId, userId: session.user.id }
                 );
@@ -417,7 +470,8 @@ export async function LikePost(postId, userId) {
                 result = await neo4jSession.run(
                     `MATCH (u:User {id: $userId}), (p:Post {id: $postId})
                      MERGE (u)-[:LIKED]->(p)
-                     SET p.likes = coalesce(p.likes, 0) + 1
+                     SET p.likes = coalesce(p.likes, 0) + 1,
+                         p.likesChange = coalesce(p.likesChange, 0) + 1
                      RETURN true AS liked, p.likes AS likes, p`,
                     { postId, userId: session.user.id }
                 );
@@ -430,12 +484,30 @@ export async function LikePost(postId, userId) {
             const record = result.records[0];
             const postData = record.get('p').properties;
             
+            const likesCount = typeof record.get('likes') === 'object' && record.get('likes').low !== undefined 
+                ? record.get('likes').low 
+                : parseInt(record.get('likes')) || 0;
+
+            // Check if embedding needs refresh due to like activity
+            try {
+                const { shouldRefreshEmbedding } = await import('@/lib/graphSage');
+                const needsRefresh = await shouldRefreshEmbedding(postId);
+                
+                if (needsRefresh) {
+                    console.log('🧠 Regenerating embedding due to like activity...');
+                    await generatePostEmbedding(postId, true);
+                    await resetChangeCounters(postId);
+                    console.log('✅ Embedding updated successfully');
+                }
+            } catch (embeddingError) {
+                console.error('❌ Failed to update embedding after like:', embeddingError);
+                // Don't fail the like operation if embedding fails
+            }
+
             return {
                 success: true,
                 liked: record.get('liked'),
-                likes: typeof record.get('likes') === 'object' && record.get('likes').low !== undefined 
-                    ? record.get('likes').low 
-                    : parseInt(record.get('likes')) || 0,
+                likes: likesCount,
                 post: postData
             };
         } finally {

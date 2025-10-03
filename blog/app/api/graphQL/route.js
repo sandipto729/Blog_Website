@@ -2,6 +2,14 @@ import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import DBOperation from "../DBOperation/Post/Blog.js";
 import CommentDBOperation from "../DBOperation/PostComment/comment.js";
+import { 
+    generatePostEmbedding, 
+    batchGenerateEmbeddings, 
+    findSimilarPosts, 
+    getEmbeddingStats,
+    shouldRefreshEmbedding,
+    resetChangeCounters
+} from "@/lib/graphSage.js";
 
 // Helper function to convert Neo4j datetime to ISO string
 const convertNeo4jDateTime = (dateTime) => {
@@ -118,6 +126,34 @@ const typeDefs = `#graphql
         comment: CommentSave
     }
 
+    # Embedding types
+    type EmbeddingStats {
+        totalPosts: Int!
+        postsWithEmbedding: Int!
+        coverage: Float!
+        methods: [String!]!
+        dimensions: [Int!]!
+    }
+    
+    type SimilarPost {
+        postId: ID!
+        title: String!
+        excerpt: String
+        category: String
+        tags: [String]
+        similarity: Float!
+        likes: Int!
+        comments: Int!
+    }
+    
+    type EmbeddingResult {
+        postId: ID!
+        embedding: [Float!]
+        method: String!
+        dimensions: Int
+        cached: Boolean!
+    }
+
     type Query {
         posts: [Post!]!
         post(id: ID!): Post
@@ -126,6 +162,11 @@ const typeDefs = `#graphql
         postsByTag(tag: String!): [Post!]!
         fetchLikes(postId: ID!): [User!]!
         fetchComments(postId: ID!): [Comment!]!
+        
+        # Embedding queries
+        embeddingStats: EmbeddingStats!
+        similarPosts(postId: ID!, limit: Int): [SimilarPost!]!
+        checkEmbeddingRefresh(postId: ID!): Boolean!
     }
 
     type Mutation {
@@ -134,6 +175,11 @@ const typeDefs = `#graphql
         deletePost(id: ID!): PostResponse!
         PostLikeToggle(postId: ID!, userId: ID!): PostResponse!
         SaveComment(postID: ID!, parentID: ID, userID: ID!, content: String!): CommentResponse!
+        
+        # Embedding mutations
+        generateEmbedding(postId: ID!, forceRefresh: Boolean): EmbeddingResult!
+        batchGenerateEmbeddings(postIds: [ID!]): [EmbeddingResult!]!
+        resetChangeCounters(postId: ID!): Boolean!
     }
 `;
 
@@ -248,6 +294,39 @@ const resolvers = {
             } catch (error) {
                 console.error('Error fetching comments for post:', error);
                 throw new Error('Failed to fetch comments for post');
+            }
+        },
+
+        // Embedding resolvers
+        embeddingStats: async () => {
+            try {
+                const stats = await getEmbeddingStats();
+                return stats;
+            } catch (error) {
+                console.error('Error fetching embedding stats:', error);
+                throw new Error('Failed to fetch embedding statistics');
+            }
+        },
+
+        similarPosts: async (_, { postId, limit = 5 }) => {
+            try {
+                // Ensure limit is an integer
+                const limitInt = parseInt(limit) || 5;
+                const similarPosts = await findSimilarPosts(postId, limitInt);
+                return similarPosts;
+            } catch (error) {
+                console.error('Error fetching similar posts:', error);
+                throw new Error('Failed to fetch similar posts');
+            }
+        },
+
+        checkEmbeddingRefresh: async (_, { postId }) => {
+            try {
+                const needsRefresh = await shouldRefreshEmbedding(postId);
+                return needsRefresh;
+            } catch (error) {
+                console.error('Error checking embedding refresh:', error);
+                throw new Error('Failed to check embedding refresh status');
             }
         }
     },
@@ -385,6 +464,43 @@ const resolvers = {
             } catch (error) {
                 console.error('Error saving comment:', error);
                 throw new Error('Failed to save comment');
+            }
+        },
+
+        // Embedding mutations
+        generateEmbedding: async (_, { postId, forceRefresh = false }) => {
+            try {
+                const result = await generatePostEmbedding(postId, forceRefresh);
+                return result;
+            } catch (error) {
+                console.error('Error generating embedding:', error);
+                throw new Error('Failed to generate embedding');
+            }
+        },
+
+        batchGenerateEmbeddings: async (_, { postIds }) => {
+            try {
+                const results = await batchGenerateEmbeddings(postIds);
+                
+                // Filter out error results and return only successful embeddings
+                if (Array.isArray(results)) {
+                    return results.filter(result => result.embedding && !result.error);
+                } else {
+                    return [results];
+                }
+            } catch (error) {
+                console.error('Error batch generating embeddings:', error);
+                throw new Error('Failed to batch generate embeddings');
+            }
+        },
+
+        resetChangeCounters: async (_, { postId }) => {
+            try {
+                await resetChangeCounters(postId);
+                return true;
+            } catch (error) {
+                console.error('Error resetting change counters:', error);
+                throw new Error('Failed to reset change counters');
             }
         }
 
