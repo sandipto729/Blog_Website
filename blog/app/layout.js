@@ -11,6 +11,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "BlogSpace - Share Your Stories",
   description: "A modern platform for sharing ideas, insights, and stories. Join our community of writers and readers.",
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({ children }) {

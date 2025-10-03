@@ -47,9 +47,9 @@ const Header = () => {
                     <Link href="/blog" className={styles.navLink}>
                         Blog
                     </Link>
-                    <Link href="/contact" className={styles.navLink}>
+                    {/* <Link href="/contact" className={styles.navLink}>
                         Contact
-                    </Link>
+                    </Link> */}
                     {session && (
                         <>
                             <Link href="/create-post" className={styles.navLink}>
@@ -134,13 +134,13 @@ const Header = () => {
                     >
                         Blog
                     </Link>
-                    <Link 
+                    {/* <Link 
                         href="/contact" 
                         className={styles.mobileNavLink}
                         onClick={() => setIsMenuOpen(false)}
                     >
                         Contact
-                    </Link>
+                    </Link> */}
                     {session && (
                         <>
                             <Link 
